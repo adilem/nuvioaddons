@@ -20,7 +20,9 @@
       ],
       "formats": [
         "mp4",
-        "m3u8"
+        "m3u8",
+        "mkv",
+        "hls"
       ],
       "limited": false,
       "disabledPlatforms": [],
@@ -44,7 +46,9 @@
       ],
       "formats": [
         "mp4",
-        "m3u8"
+        "m3u8",
+        "mkv",
+        "hls"
       ],
       "limited": false,
       "disabledPlatforms": [],
@@ -68,7 +72,8 @@
         "tr"
       ],
       "formats": [
-        "m3u8"
+        "m3u8",
+        "hls"
       ],
       "limited": false,
       "disabledPlatforms": [],
