@@ -1,6 +1,6 @@
 /**
  * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-04-29T14:44:49.858Z
+ * Generated: 2026-04-29T15:01:19.984Z
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -234,47 +234,69 @@ function extractFromMoviePage(movieUrl) {
     const streams = [];
     const addedUrls = /* @__PURE__ */ new Set();
     const toProcess = [];
-    $("div.card-video iframe").each((i, el) => {
-      const src = $(el).attr("data-src") || $(el).attr("src");
-      if (src) {
-        toProcess.push({ url: fixUrl(src), title: `Alternatif ${i + 1}` });
-      }
-    });
-    const navLinks = [];
-    $("div.tab-content a.nav-link").each((i, el) => {
+    const languageTabs = [];
+    $("ul.nav-tabs li a").each((i, el) => {
+      const title = $(el).text().trim().replace(/\s+/g, " ");
       const href = $(el).attr("href");
-      const title = $(el).text().trim() || `Sunucu ${i + 1}`;
-      if (href) {
-        const fullUrl = fixUrl(href);
-        if (fullUrl !== movieUrl && fullUrl !== movieUrl + "/") {
-          navLinks.push({ url: fullUrl, title });
-        }
+      if (href && !title.toLowerCase().includes("fragman")) {
+        languageTabs.push({ title: title || "Film", url: fixUrl(href) });
       }
     });
-    for (const nav of navLinks) {
+    if (languageTabs.length === 0) {
+      languageTabs.push({ title: "Film", url: movieUrl });
+    }
+    for (const langTab of languageTabs) {
       try {
-        console.log(`[patronFilmEkseni] Sunucu sayfas\u0131 inceleniyor: ${nav.url}`);
-        const navHtml = yield fetchText(nav.url);
-        const $nav = (0, import_cheerio.load)(navHtml);
-        $nav("div.card-video iframe").each((i, el) => {
-          const src = $nav(el).attr("data-src") || $nav(el).attr("src");
+        let pageHtml = html;
+        if (langTab.url !== movieUrl && langTab.url !== movieUrl + "/") {
+          pageHtml = yield fetchText(langTab.url);
+        }
+        const $page = (0, import_cheerio.load)(pageHtml);
+        $page("div.card-video iframe").each((i, el) => {
+          const src = $page(el).attr("data-src") || $page(el).attr("src");
           if (src) {
-            toProcess.push({ url: fixUrl(src), title: nav.title });
+            toProcess.push({ url: fixUrl(src), title: `[${langTab.title}] Ana Sunucu` });
           }
         });
+        const serverLinks = [];
+        $page("div.tab-content a.nav-link").each((i, el) => {
+          const href = $(el).attr("href");
+          const serverName = $(el).text().trim() || `Sunucu ${i + 1}`;
+          if (href) {
+            const fullUrl = fixUrl(href);
+            if (fullUrl !== langTab.url && fullUrl !== langTab.url + "/") {
+              serverLinks.push({ url: fullUrl, serverName });
+            }
+          }
+        });
+        for (const srv of serverLinks) {
+          try {
+            const navHtml = yield fetchText(srv.url);
+            const $nav = (0, import_cheerio.load)(navHtml);
+            $nav("div.card-video iframe").each((i, el) => {
+              const src = $nav(el).attr("data-src") || $nav(el).attr("src");
+              if (src) {
+                toProcess.push({ url: fixUrl(src), title: `[${langTab.title}] ${srv.serverName}` });
+              }
+            });
+          } catch (e) {
+            console.error(`[patronFilmEkseni] Sunucu sekmesi hatas\u0131 (${srv.url}): ${e.message}`);
+          }
+        }
       } catch (e) {
-        console.error(`[patronFilmEkseni] Sunucu sayfas\u0131 hatas\u0131 (${nav.url}): ${e.message}`);
+        console.error(`[patronFilmEkseni] Dil sekmesi hatas\u0131 (${langTab.url}): ${e.message}`);
       }
     }
     for (const item of toProcess) {
       try {
         const embedUrl = item.url;
-        console.log(`[patronFilmEkseni] \u0130\u015Fleniyor: ${embedUrl}`);
+        console.log(`[patronFilmEkseni] \u0130\u015Fleniyor: ${embedUrl} (${item.title})`);
         if (embedUrl.includes("eksenload") || embedUrl.includes("vidload.top") || embedUrl.includes("firgunedavay.shop")) {
           const streamResults = yield parseEksenLoad(embedUrl, movieUrl);
           for (const s of streamResults) {
             if (!addedUrls.has(s.url)) {
               addedUrls.add(s.url);
+              s.title = `${item.title} - EksenLoad`;
               streams.push(s);
             }
           }
@@ -282,7 +304,7 @@ function extractFromMoviePage(movieUrl) {
           try {
             const extracted = yield VidMolyExtractor.extract(embedUrl, movieUrl);
             if (extracted) {
-              extracted.title = `VidMoly - ${item.title}`;
+              extracted.title = `${item.title} - VidMoly`;
               extracted.name = "patronFilmEkseni";
               if (!addedUrls.has(extracted.url)) {
                 addedUrls.add(extracted.url);
@@ -297,7 +319,7 @@ function extractFromMoviePage(movieUrl) {
             addedUrls.add(embedUrl);
             streams.push({
               name: "patronFilmEkseni",
-              title: item.title,
+              title: `${item.title} - Direkt Link`,
               url: embedUrl,
               quality: "Auto",
               headers: { Referer: movieUrl }
@@ -308,7 +330,7 @@ function extractFromMoviePage(movieUrl) {
             addedUrls.add(embedUrl);
             streams.push({
               name: "patronFilmEkseni",
-              title: item.title,
+              title: `${item.title} - Embed`,
               url: embedUrl,
               quality: "Auto",
               headers: { Referer: movieUrl }
@@ -338,12 +360,31 @@ function parseEksenLoad(embedUrl, referer) {
       });
       if (!playerScript)
         return streams;
+      let subtitles = [];
+      const tracksMatches = playerScript.match(new RegExp("tracks\\s*:\\s*\\[(.*?)\\]", "s"));
+      if (tracksMatches) {
+        const tracksText = tracksMatches[1];
+        const trackBlocks = tracksText.match(/\{[^}]+\}/g) || [];
+        for (const block of trackBlocks) {
+          const fMatch = block.match(/file\s*:\s*['"]([^'"]+)['"]/);
+          const lMatch = block.match(/label\s*:\s*['"]([^'"]+)['"]/);
+          if (fMatch && lMatch) {
+            let sUrl = fMatch[1];
+            if (sUrl.startsWith("/")) {
+              sUrl = VIDEO_HOST + sUrl;
+            } else if (!sUrl.startsWith("http")) {
+              sUrl = VIDEO_HOST + "/" + sUrl;
+            }
+            subtitles.push({ file: sUrl, label: lMatch[1] });
+          }
+        }
+      }
       const fileMatches = [...playerScript.matchAll(/file\s*:\s*['"]([^'"]+)['"]/g)];
       for (const match of fileMatches) {
         const rawPath = match[1];
         if (!rawPath)
           continue;
-        if (rawPath.endsWith(".jpg") || rawPath.endsWith(".png"))
+        if (rawPath.endsWith(".jpg") || rawPath.endsWith(".png") || rawPath.endsWith(".vtt") || rawPath.endsWith(".srt"))
           continue;
         let finalUrl;
         if (rawPath.startsWith("http")) {
@@ -359,6 +400,7 @@ function parseEksenLoad(embedUrl, referer) {
             title: "EksenLoad m3u8",
             url: finalUrl,
             quality: "Auto",
+            subtitles: subtitles.length > 0 ? subtitles : void 0,
             headers: {
               Referer: new URL(embedUrl).origin + "/",
               Origin: new URL(embedUrl).origin,
@@ -366,13 +408,13 @@ function parseEksenLoad(embedUrl, referer) {
               Accept: "*/*"
             }
           });
-        } else if (finalUrl.includes(".vtt") || finalUrl.includes(".srt")) {
         } else {
           streams.push({
             name: "patronFilmEkseni",
             title: "EksenLoad Video",
             url: finalUrl,
             quality: "Auto",
+            subtitles: subtitles.length > 0 ? subtitles : void 0,
             headers: {
               Referer: new URL(embedUrl).origin + "/",
               Origin: new URL(embedUrl).origin,
