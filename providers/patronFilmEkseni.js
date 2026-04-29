@@ -1,6 +1,6 @@
 /**
  * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-04-29T14:27:35.766Z
+ * Generated: 2026-04-29T14:36:01.006Z
  */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -226,22 +226,43 @@ function extractFromMoviePage(movieUrl) {
     const $ = (0, import_cheerio.load)(html);
     const streams = [];
     const addedUrls = /* @__PURE__ */ new Set();
-    const iframes = [];
+    const toProcess = [];
     $("div.card-video iframe").each((i, el) => {
       const src = $(el).attr("data-src") || $(el).attr("src");
       if (src) {
-        iframes.push({ url: fixUrl(src), title: `Alternatif ${i + 1}` });
+        toProcess.push({ url: fixUrl(src), title: `Alternatif ${i + 1}` });
       }
     });
+    const navLinks = [];
     $("div.tab-content a.nav-link").each((i, el) => {
       const href = $(el).attr("href");
+      const title = $(el).text().trim() || `Sunucu ${i + 1}`;
       if (href) {
-        iframes.push({ url: fixUrl(href), title: `Sunucu ${i + 1}` });
+        const fullUrl = fixUrl(href);
+        if (fullUrl !== movieUrl && fullUrl !== movieUrl + "/") {
+          navLinks.push({ url: fullUrl, title });
+        }
       }
     });
-    for (const item of iframes) {
+    for (const nav of navLinks) {
+      try {
+        console.log(`[patronFilmEkseni] Sunucu sayfas\u0131 inceleniyor: ${nav.url}`);
+        const navHtml = yield fetchText(nav.url);
+        const $nav = (0, import_cheerio.load)(navHtml);
+        $nav("div.card-video iframe").each((i, el) => {
+          const src = $nav(el).attr("data-src") || $nav(el).attr("src");
+          if (src) {
+            toProcess.push({ url: fixUrl(src), title: nav.title });
+          }
+        });
+      } catch (e) {
+        console.error(`[patronFilmEkseni] Sunucu sayfas\u0131 hatas\u0131 (${nav.url}): ${e.message}`);
+      }
+    }
+    for (const item of toProcess) {
       try {
         const embedUrl = item.url;
+        console.log(`[patronFilmEkseni] \u0130\u015Fleniyor: ${embedUrl}`);
         if (embedUrl.includes("eksenload") || embedUrl.includes("vidload.top") || embedUrl.includes("firgunedavay.shop")) {
           const streamResults = yield parseEksenLoad(embedUrl, movieUrl);
           for (const s of streamResults) {
@@ -250,7 +271,29 @@ function extractFromMoviePage(movieUrl) {
               streams.push(s);
             }
           }
+        } else if (embedUrl.includes("vidmoly")) {
+          if (!addedUrls.has(embedUrl)) {
+            addedUrls.add(embedUrl);
+            streams.push({
+              name: "patronFilmEkseni",
+              title: `VidMoly - ${item.title}`,
+              url: embedUrl,
+              quality: "Auto",
+              headers: { Referer: movieUrl }
+            });
+          }
         } else if (embedUrl.includes(".m3u8") || embedUrl.includes(".mp4")) {
+          if (!addedUrls.has(embedUrl)) {
+            addedUrls.add(embedUrl);
+            streams.push({
+              name: "patronFilmEkseni",
+              title: item.title,
+              url: embedUrl,
+              quality: "Auto",
+              headers: { Referer: movieUrl }
+            });
+          }
+        } else {
           if (!addedUrls.has(embedUrl)) {
             addedUrls.add(embedUrl);
             streams.push({
