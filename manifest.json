@@ -114,7 +114,9 @@
       ],
       "formats": [
         "mp4",
-        "m3u8"
+        "m3u8",
+        "hls",
+        "mkv"
       ],
       "limited": false,
       "disabledPlatforms": [],

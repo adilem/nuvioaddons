@@ -1,13 +1,11 @@
 /**
  * patronHDFilmDelisi - Built from src/patronHDFilmDelisi/
- * Generated: 2026-04-29T14:41:50.357Z
+ * Generated: 2026-04-29T14:51:02.109Z
  */
-var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __propIsEnum = Object.prototype.propertyIsEnumerable;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -34,14 +32,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
@@ -72,7 +62,7 @@ __export(patronHDFilmDelisi_exports, {
 module.exports = __toCommonJS(patronHDFilmDelisi_exports);
 
 // src/patronHDFilmDelisi/extractor.js
-var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
+var import_cheerio = require("cheerio");
 
 // src/patronHDFilmDelisi/http.js
 var MAIN_URL = "https://hdfilmdelisi.one";
@@ -198,7 +188,7 @@ function pickBestMatch(results, query) {
   return results.find((item) => normalize(item.title) === q) || results.find((item) => normalize(item.title).startsWith(q)) || results.find((item) => normalize(item.title).includes(q)) || results[0];
 }
 function extractCandidatesFromHtml(html) {
-  const $ = import_cheerio_without_node_native.default.load(html);
+  const $ = (0, import_cheerio.load)(html);
   const candidates = [];
   $('a[href*="/film/"]').each((_, el) => {
     const href = fixUrl($(el).attr("href"));
@@ -326,7 +316,7 @@ function collectVideoUrlsFromText(text) {
 function extractFromMoviePage(movieUrl) {
   return __async(this, null, function* () {
     const html = yield fetchText(movieUrl);
-    const $ = import_cheerio_without_node_native.default.load(html);
+    const $ = (0, import_cheerio.load)(html);
     const streams = [];
     const seen = /* @__PURE__ */ new Set();
     const foundUrls = [];
@@ -349,7 +339,7 @@ function extractFromMoviePage(movieUrl) {
     });
     foundUrls.push(...collectVideoUrlsFromText(html));
     for (const url of foundUrls) {
-      if (!url)
+      if (!url || url === movieUrl)
         continue;
       if (seen.has(url))
         continue;
