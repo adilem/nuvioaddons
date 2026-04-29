@@ -1,6 +1,6 @@
 /**
  * patronhdfcehennemi - Built from src/patronhdfcehennemi/
- * Generated: 2026-04-29T15:09:25.277Z
+ * Generated: 2026-04-29T15:14:47.825Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -154,13 +154,34 @@ function getTmdbTitle(tmdbId, mediaType) {
 var PROVIDER_NAME = "PatronHDFCehennemi";
 function inferLangFromSource(source = "") {
   const value = source.toLowerCase();
+  if (/\btr\b|turkce|türkçe/.test(value))
+    return "TR";
+  if (/\ben\b|english/.test(value))
+    return "EN";
   if (value.includes(" d ") || value.includes("dublaj"))
     return "Dublaj";
   if (value.includes(" a ") || value.includes("altyazi") || value.includes("altyaz\u0131"))
     return "Altyazi";
+  if (value.includes("sub"))
+    return "Altyazi";
   if (value.includes("orijinal"))
     return "Orijinal";
   return "Bilinmiyor";
+}
+function inferSourceFromUrls(source = "", iframeUrl = "", videoUrl = "") {
+  const base = (source || "").trim();
+  if (base)
+    return base;
+  const joined = `${iframeUrl} ${videoUrl}`.toLowerCase();
+  if (joined.includes("rapidrame"))
+    return "RapidRame";
+  if (joined.includes("moly") || joined.includes("vidmoly"))
+    return "VidMoly";
+  if (joined.includes("sibnet"))
+    return "Sibnet";
+  if (joined.includes("ok.ru"))
+    return "OkRu";
+  return "Kaynak";
 }
 function normalizeTitle(value) {
   return (value || "").toLowerCase().replace(/[^a-z0-9çğıöşü]+/gi, " ").trim();
@@ -404,10 +425,11 @@ function resolveIframeSource(source, iframeUrl, pageUrl) {
       return null;
     const tracks = parseTracks(script).filter((item) => item.kind === "captions" && item.file);
     const subtitleNote = tracks.length ? ` | Subs: ${tracks.length}` : "";
-    const lang = inferLangFromSource(source);
+    const resolvedSource = inferSourceFromUrls(source, iframeUrl, videoUrl);
+    const lang = inferLangFromSource(`${source} ${iframeUrl} ${videoUrl}`);
     return {
       name: `${PROVIDER_NAME} - ${lang}`,
-      title: `${source}${subtitleNote}`,
+      title: `${resolvedSource}${subtitleNote}`,
       url: videoUrl,
       quality: "Auto",
       headers: {

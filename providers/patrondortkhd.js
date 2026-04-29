@@ -1,6 +1,6 @@
 /**
  * patrondortkhd - Built from src/patrondortkhd/
- * Generated: 2026-04-29T15:04:10.218Z
+ * Generated: 2026-04-29T15:14:47.784Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -228,6 +228,10 @@ function normalizeTitle(value) {
 }
 function inferLanguageLabel(text = "") {
   const v = text.toLowerCase();
+  if (/\btr\b|turkce|türkçe/.test(v))
+    return "TR";
+  if (/\ben\b|english/.test(v))
+    return "EN";
   if (v.includes("dublaj") || v.includes("dubbed") || v.includes("hindi"))
     return "Dublaj";
   if (v.includes("altyazi") || v.includes("altyaz\u0131") || v.includes("sub"))
@@ -240,8 +244,11 @@ function inferLanguageLabel(text = "") {
 }
 function inferSourceLabel(text = "", url = "") {
   const raw = (text || "").trim();
-  if (raw)
-    return raw;
+  if (raw) {
+    const cleaned = raw.replace(/\s+/g, " ").replace(/\b(download file|click here|watch now)\b/ig, "").trim();
+    if (cleaned)
+      return cleaned;
+  }
   const lower = (url || "").toLowerCase();
   if (lower.includes("hubcloud"))
     return "HubCloud";
