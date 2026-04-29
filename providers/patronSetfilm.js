@@ -1,6 +1,6 @@
 /**
  * patronSetfilm - Built from src/patronSetfilm/
- * Generated: 2026-04-29T15:00:36.378Z
+ * Generated: 2026-04-29T15:28:14.711Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -531,16 +531,19 @@ function extractStreams(tmdbId, mediaType, season, episode) {
                 if (lowerIframe.includes("stplay.cfd") && !lowerIframe.includes("partkey=")) {
                   finalUrl += `${finalUrl.includes("?") ? "&" : "?"}partKey=${partKey || ""}`;
                 }
-                if (!/\.(m3u8|mp4|mkv)/i.test(finalUrl)) {
-                  finalUrl += finalUrl.includes("#") ? "" : "#.mkv";
+                const looksPlayable = /\.(m3u8|mp4|mkv)(\?|#|$)/i.test(finalUrl) || finalUrl.includes("/cdn/hls/") || finalUrl.includes("/manifests/");
+                if (looksPlayable) {
+                  if (!/\.(m3u8|mp4|mkv)/i.test(finalUrl) && (finalUrl.includes("/cdn/hls/") || finalUrl.includes("/manifests/"))) {
+                    finalUrl += finalUrl.includes("#") ? "" : "#.m3u8";
+                  }
+                  streams.push({
+                    name: displayName,
+                    title,
+                    url: finalUrl,
+                    quality: "Auto",
+                    headers: { "Referer": contentUrl }
+                  });
                 }
-                streams.push({
-                  name: displayName,
-                  title,
-                  url: finalUrl,
-                  quality: "Auto",
-                  headers: { "Referer": contentUrl }
-                });
               }
             }
           }))());
