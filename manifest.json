@@ -20,9 +20,7 @@
       ],
       "formats": [
         "mp4",
-        "m3u8",
-        "mkv",
-        "hls"
+        "m3u8"
       ],
       "limited": false,
       "disabledPlatforms": [],
@@ -46,9 +44,7 @@
       ],
       "formats": [
         "mp4",
-        "m3u8",
-        "mkv",
-        "hls"
+        "m3u8"
       ],
       "limited": false,
       "disabledPlatforms": [],
@@ -72,8 +68,7 @@
         "tr"
       ],
       "formats": [
-        "m3u8",
-        "hls"
+        "m3u8"
       ],
       "limited": false,
       "disabledPlatforms": [],
@@ -247,6 +242,31 @@
         "m3u8",
         "mp4",
         "mkv"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "patron-film-ekseni",
+      "name": "patronFilmEkseni",
+      "description": "FilmEkseni.cc tabanli film saglayicisi. @patr0n tarafindan gelistirildi.",
+      "version": "1.0.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie"
+      ],
+      "filename": "providers/patronFilmEkseni.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=filmekseni.cc&sz=64",
+      "contentLanguage": [
+        "tr"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4",
+        "mkv",
+        "hls"
       ],
       "limited": false,
       "disabledPlatforms": [],
