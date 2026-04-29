@@ -1,6 +1,6 @@
 /**
  * patronMulti - Built from src/patronMulti/
- * Generated: 2026-04-19T18:24:50.169Z
+ * Generated: 2026-04-29T15:18:05.584Z
  */
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
@@ -33,6 +33,22 @@ var VIDLINK_HEADERS = {
   "Origin": "https://vidlink.pro",
   "Accept": "application/json,*/*"
 };
+function inferLanguageFromText(text) {
+  var v = (text || "").toLowerCase();
+  if (v.includes("dublaj") || v.includes("dubbed"))
+    return "TR Dublaj";
+  if (v.includes("altyazi") || v.includes("altyaz\u0131") || v.includes("sub"))
+    return "TR Altyazi";
+  return "TR Altyazi";
+}
+function buildLabel(sourceName, quality, baseTitle) {
+  var lang = inferLanguageFromText(baseTitle);
+  var q = quality || "Auto";
+  return {
+    name: `${sourceName} - ${lang}`,
+    title: `${baseTitle} | ${sourceName} | ${lang} | ${q}`
+  };
+}
 function getTmdbInfo(tmdbId, mediaType) {
   return __async(this, null, function* () {
     var typePath = mediaType === "movie" ? "movie" : "tv";
@@ -140,10 +156,11 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
         Object.keys(data.stream.qualities).forEach(function(qKey) {
           var qData = data.stream.qualities[qKey];
           if (qData && qData.url) {
+            var meta = buildLabel("VidLink", qKey, displayTitle);
             streams.push({
               url: qData.url,
-              name: "VidLink",
-              title: `${displayTitle} (VidLink ${qKey})`,
+              name: meta.name,
+              title: meta.title,
               quality: qKey,
               headers: streamHeaders
             });
@@ -161,10 +178,11 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
             if (parsed.length > 0) {
               parsed.forEach(function(s) {
                 var q = qualityFromResolution(s.resolution);
+                var meta = buildLabel("VidLink", q, displayTitle);
                 streams.push({
                   url: s.url,
-                  name: "VidLink",
-                  title: `${displayTitle} (VidLink ${q})`,
+                  name: meta.name,
+                  title: meta.title,
                   quality: q,
                   headers: streamHeaders
                 });
@@ -173,8 +191,8 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
             } else {
               streams.push({
                 url: data.stream.playlist,
-                name: "VidLink",
-                title: `${displayTitle} (VidLink Auto)`,
+                name: buildLabel("VidLink", "Auto", displayTitle).name,
+                title: buildLabel("VidLink", "Auto", displayTitle).title,
                 quality: "Auto",
                 headers: streamHeaders
               });
@@ -184,8 +202,8 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
         } catch (parseErr) {
           streams.push({
             url: data.stream.playlist,
-            name: "VidLink",
-            title: `${displayTitle} (VidLink Auto)`,
+            name: buildLabel("VidLink", "Auto", displayTitle).name,
+            title: buildLabel("VidLink", "Auto", displayTitle).title,
             quality: "Auto",
             headers: streamHeaders
           });
@@ -216,10 +234,11 @@ function tryVidmody(imdbId, mediaType, season, episode, title, year) {
       var checkRes = yield fetch(targetUrl.replace("#.m3u8", ""), { method: "HEAD" });
       if (checkRes.status === 200) {
         console.log(`[PatronMulti V${VERSION}] Vidmody: i\xE7erik bulundu`);
+        var meta = buildLabel("Vidmody", "Auto", displayTitle);
         return [{
           url: targetUrl,
-          name: "Vidmody",
-          title: `${displayTitle} (Vidmody)`,
+          name: meta.name,
+          title: meta.title,
           quality: "Auto",
           headers: {
             "Referer": "https://vidmody.com/",

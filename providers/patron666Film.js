@@ -1,6 +1,6 @@
 /**
  * patron666Film - Built from src/patron666Film/
- * Generated: 2026-04-27T13:08:31.930Z
+ * Generated: 2026-04-29T15:18:05.552Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -184,6 +184,24 @@ function getTmdbTitle(tmdbId, mediaType) {
 
 // src/patron666Film/extractor.js
 var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
+function inferLanguage(label = "") {
+  const v = (label || "").toLowerCase();
+  if (v.includes("dublaj"))
+    return "TR Dublaj";
+  if (v.includes("altyazi") || v.includes("altyaz\u0131") || v.includes("sub"))
+    return "TR Altyazi";
+  if (/\btr\b|turkce|türkçe/.test(v))
+    return "TR";
+  return "Bilinmiyor";
+}
+function withMeta(player, label, quality) {
+  const lang = inferLanguage(label);
+  const q = quality || "Auto";
+  return {
+    name: `Patron666Film - ${player} - ${lang}`,
+    title: `${player} | ${lang} | ${q} | ${label}`
+  };
+}
 function searchMovie(query) {
   return __async(this, null, function* () {
     const searchUrl = `${MAIN_URL}/arama/?q=${encodeURIComponent(query)}`;
@@ -238,9 +256,10 @@ function extractFromMoviePage(movieUrl) {
           if (idMatch) {
             let cleanId = idMatch[1].replace("=", "");
             let m3u8Url = `https://p.rapidplay.website/videos/${cleanId}/master.m3u8`;
+            const meta = withMeta("Rapidplay", label, "Auto");
             streams.push({
-              name: "Patron666Film",
-              title: `Rapidplay - ${label}`,
+              name: meta.name,
+              title: meta.title,
               url: m3u8Url,
               quality: "Auto",
               headers: {
@@ -255,11 +274,13 @@ function extractFromMoviePage(movieUrl) {
           continue;
         }
         if (embedUrl.includes(".m3u8") || embedUrl.includes(".mp4")) {
+          const quality = embedUrl.includes(".m3u8") ? "Auto" : "720p";
+          const meta = withMeta("Direkt", label, quality);
           streams.push({
-            name: "Patron666Film",
-            title: label,
+            name: meta.name,
+            title: meta.title,
             url: embedUrl,
-            quality: "Auto",
+            quality,
             headers: { Referer: movieUrl }
           });
         }
