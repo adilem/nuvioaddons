@@ -1,9 +1,11 @@
 /**
  * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-04-29T14:36:01.006Z
+ * Generated: 2026-04-29T14:44:49.858Z
  */
 var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
@@ -20,6 +22,7 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -33,6 +36,10 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var __publicField = (obj, key, value) => {
+  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+};
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
@@ -272,15 +279,18 @@ function extractFromMoviePage(movieUrl) {
             }
           }
         } else if (embedUrl.includes("vidmoly")) {
-          if (!addedUrls.has(embedUrl)) {
-            addedUrls.add(embedUrl);
-            streams.push({
-              name: "patronFilmEkseni",
-              title: `VidMoly - ${item.title}`,
-              url: embedUrl,
-              quality: "Auto",
-              headers: { Referer: movieUrl }
-            });
+          try {
+            const extracted = yield VidMolyExtractor.extract(embedUrl, movieUrl);
+            if (extracted) {
+              extracted.title = `VidMoly - ${item.title}`;
+              extracted.name = "patronFilmEkseni";
+              if (!addedUrls.has(extracted.url)) {
+                addedUrls.add(extracted.url);
+                streams.push(extracted);
+              }
+            }
+          } catch (err) {
+            console.error(`[patronFilmEkseni] VidMoly parse hatas\u0131: ${err.message}`);
           }
         } else if (embedUrl.includes(".m3u8") || embedUrl.includes(".mp4")) {
           if (!addedUrls.has(embedUrl)) {
@@ -350,8 +360,8 @@ function parseEksenLoad(embedUrl, referer) {
             url: finalUrl,
             quality: "Auto",
             headers: {
-              Referer: referer,
-              Origin: "null",
+              Referer: new URL(embedUrl).origin + "/",
+              Origin: new URL(embedUrl).origin,
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0",
               Accept: "*/*"
             }
@@ -364,8 +374,8 @@ function parseEksenLoad(embedUrl, referer) {
             url: finalUrl,
             quality: "Auto",
             headers: {
-              Referer: referer,
-              Origin: "null",
+              Referer: new URL(embedUrl).origin + "/",
+              Origin: new URL(embedUrl).origin,
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0",
               Accept: "*/*"
             }
@@ -401,6 +411,159 @@ function extractStreams(tmdbId, mediaType) {
     return streams;
   });
 }
+var VidMolyExtractor = class {
+  static canHandleUrl(url) {
+    return url.includes("vidmoly") || this.supportedDomains.some((domain) => url.includes(domain));
+  }
+  static extract(embedUrl, referer = null) {
+    return __async(this, null, function* () {
+      var _a;
+      try {
+        console.log(`[VidMoly] Extracting: ${embedUrl}`);
+        const headers = {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Sec-Fetch-Dest": "iframe"
+        };
+        if (referer)
+          headers.Referer = referer;
+        const candidateUrls = [embedUrl];
+        const normalizedUrl = embedUrl.replace(/https?:\/\/vidmoly\.[a-z]+/, "https://vidmoly.me");
+        if (normalizedUrl !== embedUrl)
+          candidateUrls.push(normalizedUrl);
+        const watchUrl = normalizedUrl.replace(/\/embed-([a-z0-9]+)\.html/, "/w/$1");
+        if (watchUrl !== normalizedUrl)
+          candidateUrls.push(watchUrl);
+        let html = "";
+        let finalUrl = "";
+        for (const url of candidateUrls) {
+          try {
+            const response = yield fetch(url, { headers });
+            html = yield response.text();
+            finalUrl = url;
+            const lowerHtml = html.toLowerCase();
+            if (lowerHtml.includes("this video not found") || lowerHtml.includes("file was deleted") || lowerHtml.includes("video not found")) {
+              continue;
+            }
+            if (html.includes("sources:") || html.includes(".m3u8") || html.includes("jwplayer"))
+              break;
+          } catch (e) {
+            continue;
+          }
+        }
+        if (!html)
+          throw new Error("Could not fetch VidMoly page");
+        const $ = (0, import_cheerio.load)(html);
+        if (html.includes("Select number") || html.toLowerCase().includes("select the number")) {
+          const op = $('input[name="op"]').val();
+          const fileCode = $('input[name="file_code"]').val();
+          const answer = $("div.vhint b").text() || $("span.vhint b").text() || ((_a = html.match(/Please select (\d+)/)) == null ? void 0 : _a[1]);
+          const ts = $('input[name="ts"]').val();
+          const nonce = $('input[name="nonce"]').val();
+          const ctok = $('input[name="ctok"]').val();
+          if (op && fileCode && answer) {
+            const formData = new URLSearchParams();
+            formData.append("op", op);
+            formData.append("file_code", fileCode);
+            formData.append("answer", answer);
+            if (ts)
+              formData.append("ts", ts);
+            if (nonce)
+              formData.append("nonce", nonce);
+            if (ctok)
+              formData.append("ctok", ctok);
+            const response = yield fetch(finalUrl, {
+              method: "POST",
+              headers: __spreadProps(__spreadValues({}, headers), { "Content-Type": "application/x-www-form-urlencoded" }),
+              body: formData.toString()
+            });
+            html = yield response.text();
+            finalUrl = response.url;
+          }
+        }
+        let videoUrl = null;
+        const scriptMatches = html.match(/eval\(function\(p,a,c,k,e,?[d]?\).*?\)\)/g);
+        if (scriptMatches) {
+          for (let script of scriptMatches) {
+            const unpacked = this.unpackJS(script);
+            const vidMatch = unpacked.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || unpacked.match(/file\s*:\s*["']([^"']+\.mp4[^"']*)["']/i);
+            if (vidMatch) {
+              videoUrl = vidMatch[1];
+              break;
+            }
+          }
+        }
+        if (!videoUrl && html.includes("#EXTM3U")) {
+          const lines = html.split("\n");
+          for (const line of lines) {
+            if (line.trim().startsWith("http") && (line.includes(".m3u8") || line.includes(".mp4"))) {
+              videoUrl = line.trim().replace(/['"]/g, "");
+              break;
+            }
+          }
+        }
+        if (!videoUrl) {
+          const sourcesMatch = html.match(/sources:\s*\[([^\]]*)\]/);
+          if (sourcesMatch) {
+            try {
+              const sourcesText = this._addMarks(sourcesMatch[1], "file");
+              const sources = JSON.parse(`[${sourcesText}]`);
+              for (const source of sources) {
+                if (source.file) {
+                  videoUrl = source.file;
+                  break;
+                }
+              }
+            } catch (e) {
+            }
+          }
+        }
+        if (!videoUrl) {
+          const fileMatch = html.match(/file\s*:\s*['"]([^'"]*\.m3u8[^'"]*)['"]/) || html.match(/file\s*:\s*['"]([^'"]*\.mp4[^'"]*)['"]/);
+          if (fileMatch)
+            videoUrl = fileMatch[1];
+        }
+        if (!videoUrl)
+          throw new Error(`Could not extract video URL from ${embedUrl}`);
+        console.log(`[VidMoly] Extracted: ${videoUrl}`);
+        return {
+          url: videoUrl,
+          quality: "Auto",
+          headers: { "Referer": finalUrl, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+        };
+      } catch (error) {
+        console.error(`[VidMoly] Extract error: ${error.message}`);
+        return null;
+      }
+    });
+  }
+  static unpackJS(code) {
+    try {
+      const match = code.match(/}\('([^']*)',(\d+),(\d+),'([^']*)'\.split\('\|'\)/);
+      if (!match)
+        return code;
+      let p = match[1];
+      const a = parseInt(match[2], 10);
+      const c = parseInt(match[3], 10);
+      const k = match[4].split("|");
+      const e = (c2) => (c2 < a ? "" : e(parseInt(c2 / a, 10))) + (c2 % a > 35 ? String.fromCharCode(c2 % a + 29) : (c2 % a).toString(36));
+      let map = {};
+      for (let i = 0; i < c; i++)
+        map[e(i)] = k[i];
+      const dictRegex = new RegExp("\\b(" + Object.keys(map).filter((key) => key).join("|") + ")\\b", "g");
+      return p.replace(dictRegex, function(match2) {
+        return map[match2] || match2;
+      });
+    } catch (err) {
+      return code;
+    }
+  }
+  static _addMarks(text, field) {
+    return text.replace(new RegExp(`"?${field}"?`, "g"), `"${field}"`);
+  }
+};
+__publicField(VidMolyExtractor, "name", "VidMoly");
+__publicField(VidMolyExtractor, "supportedDomains", ["vidmoly.to", "vidmoly.me", "vidmoly.net", "vidmoly.biz", "videobin.co"]);
 
 // src/patronFilmEkseni/index.js
 function getStreams(tmdbId, mediaType, season, episode) {
