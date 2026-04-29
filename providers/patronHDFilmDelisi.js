@@ -1,6 +1,6 @@
 /**
  * patronHDFilmDelisi - Built from src/patronHDFilmDelisi/
- * Generated: 2026-04-29T14:51:02.109Z
+ * Generated: 2026-04-29T15:20:35.938Z
  */
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -181,6 +181,17 @@ var PROVIDER_NAME = "PatronHDFilmDelisi";
 function normalize(value) {
   return (value || "").toLowerCase().replace(/[^a-z0-9çğıöşü]+/gi, " ").trim();
 }
+function slugify(value) {
+  return (value || "").toLowerCase().replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ö/g, "o").replace(/ç/g, "c").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+function isLikelyMoviePage(html) {
+  const lower = (html || "").toLowerCase();
+  if (!lower)
+    return false;
+  if (lower.includes("<title>404") || lower.includes("404 not found"))
+    return false;
+  return lower.includes("/film/") || lower.includes("film \xF6zeti") || lower.includes("oyuncular") || lower.includes("imdb");
+}
 function pickBestMatch(results, query) {
   if (!results.length)
     return null;
@@ -198,6 +209,30 @@ function extractCandidatesFromHtml(html) {
     }
   });
   return candidates;
+}
+function tryDirectSlug(query) {
+  return __async(this, null, function* () {
+    const slug = slugify(query);
+    if (!slug)
+      return null;
+    const candidates = [`${MAIN_URL}/film/${slug}`];
+    for (let i = 1; i <= 12; i++) {
+      candidates.push(`${MAIN_URL}/film/${slug}-hdizle-${i}`);
+    }
+    for (const url of candidates) {
+      try {
+        const html = yield fetchText(url, {
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Referer": MAIN_URL
+        });
+        if (isLikelyMoviePage(html))
+          return url;
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
+  });
 }
 function collectObjectsDeep(value, out) {
   if (!value)
@@ -241,6 +276,8 @@ function searchMovie(query) {
   return __async(this, null, function* () {
     const endpoints = [
       `${MAIN_URL}/arama?q=${encodeURIComponent(query)}`,
+      `${MAIN_URL}/arama?query=${encodeURIComponent(query)}`,
+      `${MAIN_URL}/film-ara/${encodeURIComponent(query)}`,
       `${MAIN_URL}/search?q=${encodeURIComponent(query)}`,
       `${MAIN_URL}/api/search?q=${encodeURIComponent(query)}`,
       `${MAIN_URL}/api/search?query=${encodeURIComponent(query)}`,
@@ -273,6 +310,9 @@ function searchMovie(query) {
         continue;
       }
     }
+    const directGuess = yield tryDirectSlug(query);
+    if (directGuess)
+      return directGuess;
     return null;
   });
 }
