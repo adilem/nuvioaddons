@@ -1,6 +1,6 @@
 /**
  * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-04-29T15:01:19.984Z
+ * Generated: 2026-04-29T15:12:10.836Z
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -195,6 +195,19 @@ function getTmdbTitle(tmdbId, mediaType) {
 // src/patronFilmEkseni/extractor.js
 var import_cheerio = require("cheerio");
 var VIDEO_HOST = "https://fmdzihoilrvjfvcvvhlbwlkypjsmemvyfxvppedcdqszdxotre.firgunedavay.shop";
+function inferPlayerName(itemTitle = "", url = "") {
+  const title = (itemTitle || "").toLowerCase();
+  const lowerUrl = (url || "").toLowerCase();
+  if (title.includes("vidmoly") || lowerUrl.includes("vidmoly"))
+    return "VidMoly";
+  if (title.includes("eksenload") || lowerUrl.includes("eksenload") || lowerUrl.includes("vidload.top") || lowerUrl.includes("firgunedavay.shop"))
+    return "EksenLoad";
+  if (title.includes("direkt link") || lowerUrl.includes(".m3u8") || lowerUrl.includes(".mp4"))
+    return "Direkt";
+  if (title.includes("embed"))
+    return "Embed";
+  return "Player";
+}
 function searchMovie(query) {
   return __async(this, null, function* () {
     const url = `${MAIN_URL}/search/`;
@@ -297,6 +310,7 @@ function extractFromMoviePage(movieUrl) {
             if (!addedUrls.has(s.url)) {
               addedUrls.add(s.url);
               s.title = `${item.title} - EksenLoad`;
+              s.name = `patronFilmEkseni - ${inferPlayerName(s.title, s.url)}`;
               streams.push(s);
             }
           }
@@ -305,7 +319,7 @@ function extractFromMoviePage(movieUrl) {
             const extracted = yield VidMolyExtractor.extract(embedUrl, movieUrl);
             if (extracted) {
               extracted.title = `${item.title} - VidMoly`;
-              extracted.name = "patronFilmEkseni";
+              extracted.name = `patronFilmEkseni - ${inferPlayerName(extracted.title, extracted.url)}`;
               if (!addedUrls.has(extracted.url)) {
                 addedUrls.add(extracted.url);
                 streams.push(extracted);
@@ -318,7 +332,7 @@ function extractFromMoviePage(movieUrl) {
           if (!addedUrls.has(embedUrl)) {
             addedUrls.add(embedUrl);
             streams.push({
-              name: "patronFilmEkseni",
+              name: `patronFilmEkseni - ${inferPlayerName(`${item.title} - Direkt Link`, embedUrl)}`,
               title: `${item.title} - Direkt Link`,
               url: embedUrl,
               quality: "Auto",
@@ -329,7 +343,7 @@ function extractFromMoviePage(movieUrl) {
           if (!addedUrls.has(embedUrl)) {
             addedUrls.add(embedUrl);
             streams.push({
-              name: "patronFilmEkseni",
+              name: `patronFilmEkseni - ${inferPlayerName(`${item.title} - Embed`, embedUrl)}`,
               title: `${item.title} - Embed`,
               url: embedUrl,
               quality: "Auto",
