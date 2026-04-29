@@ -1,6 +1,6 @@
 /**
  * patronFilmMakinesi - Built from src/patronFilmMakinesi/
- * Generated: 2026-04-22T13:36:00.612Z
+ * Generated: 2026-04-29T15:16:07.734Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -38,7 +38,10 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
@@ -479,6 +482,25 @@ function extractRapid(url, referer) {
 
 // src/patronFilmMakinesi/extractor.js
 var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
+function inferLanguage(label = "") {
+  const value = (label || "").toLowerCase();
+  if (value.includes("dublaj"))
+    return "Dublaj";
+  if (value.includes("altyazi") || value.includes("altyaz\u0131") || value.includes("sub"))
+    return "Altyazi";
+  if (/\btr\b|turkce|türkçe/.test(value))
+    return "TR";
+  if (/\ben\b|english/.test(value))
+    return "EN";
+  return "Bilinmiyor";
+}
+function buildMeta(player, label) {
+  const lang = inferLanguage(label);
+  return {
+    name: `PatronFilmMakinesi - ${player} - ${lang}`,
+    title: `${player} | ${lang} | ${label}`
+  };
+}
 function searchMovie(query) {
   return __async(this, null, function* () {
     const searchUrl = `${MAIN_URL}/arama/?s=${encodeURIComponent(query)}`;
@@ -530,9 +552,10 @@ function extractFromMoviePage(movieUrl) {
         if (embedUrl.includes("closeload")) {
           const clRes = yield extractCloseLoad(embedUrl, movieUrl);
           if (clRes) {
+            const meta = buildMeta("CloseLoad", label);
             streams.push({
-              name: "PatronFilmMakinesi",
-              title: `CloseLoad - ${label}`,
+              name: meta.name,
+              title: meta.title,
               url: clRes.url,
               quality: clRes.quality || "720p",
               headers: clRes.headers || { Referer: MAIN_URL + "/" }
@@ -543,9 +566,10 @@ function extractFromMoviePage(movieUrl) {
         if (embedUrl.includes("rapid.")) {
           const rapidRes = yield extractRapid(embedUrl, movieUrl);
           if (rapidRes) {
+            const meta = buildMeta("Rapid", label);
             streams.push({
-              name: "PatronFilmMakinesi",
-              title: `Rapid - ${label}`,
+              name: meta.name,
+              title: meta.title,
               url: rapidRes.url,
               quality: rapidRes.quality || "Auto",
               headers: rapidRes.headers
@@ -556,9 +580,10 @@ function extractFromMoviePage(movieUrl) {
         if (embedUrl.includes("vidmoly")) {
           const vidmolyRes = yield extractVidMoly(embedUrl, movieUrl);
           if (vidmolyRes) {
+            const meta = buildMeta("VidMoly", label);
             streams.push({
-              name: "PatronFilmMakinesi",
-              title: `VidMoly - ${label}`,
+              name: meta.name,
+              title: meta.title,
               url: vidmolyRes.url,
               quality: "720p",
               headers: __spreadValues(__spreadValues({}, HEADERS), vidmolyRes.headers)
@@ -569,9 +594,10 @@ function extractFromMoviePage(movieUrl) {
         if (embedUrl.includes("sibnet.ru")) {
           const sibnetRes = yield extractSibnet(embedUrl);
           if (sibnetRes) {
+            const meta = buildMeta("Sibnet", label);
             streams.push({
-              name: "PatronFilmMakinesi",
-              title: `Sibnet - ${label}`,
+              name: meta.name,
+              title: meta.title,
               url: sibnetRes.url,
               quality: "720p",
               headers: __spreadValues(__spreadValues({}, HEADERS), sibnetRes.headers)
@@ -580,9 +606,10 @@ function extractFromMoviePage(movieUrl) {
           }
         }
         if (embedUrl.includes(".m3u8") || embedUrl.includes(".mp4")) {
+          const meta = buildMeta("Direkt", label);
           streams.push({
-            name: "PatronFilmMakinesi",
-            title: label,
+            name: meta.name,
+            title: meta.title,
             url: embedUrl,
             quality: "720p",
             headers: { Referer: movieUrl }
