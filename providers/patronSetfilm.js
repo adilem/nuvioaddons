@@ -1,6 +1,6 @@
 /**
  * patronSetfilm - Built from src/patronSetfilm/
- * Generated: 2026-04-23T22:28:53.864Z
+ * Generated: 2026-04-29T15:00:36.378Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -38,7 +38,10 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
@@ -124,7 +127,7 @@ var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-n
 function getTmdbTitle(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
-      let decodeHtml = function (text) {
+      let decodeHtml = function(text) {
         return (text || "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#039;/g, "'");
       };
       const type = mediaType === "movie" ? "movie" : "tv";
@@ -183,6 +186,31 @@ function getTmdbTitle(tmdbId, mediaType) {
 var PROVIDER_NAME = "SetFilmIzle";
 function normalizeTitle(value) {
   return (value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+function toDisplayLanguage(partKey = "", rawText = "") {
+  const v = `${partKey} ${rawText}`.toLowerCase();
+  if (v.includes("dublaj"))
+    return "TR Dublaj";
+  if (v.includes("altyazi") || v.includes("altyaz\u0131"))
+    return "TR Altyazi";
+  if (v.includes("orijinal"))
+    return "Orijinal";
+  return "Bilinmiyor";
+}
+function toDisplayPlayer(playerName = "", iframeUrl = "") {
+  const name = (playerName || "").trim();
+  if (name)
+    return name;
+  const url = (iframeUrl || "").toLowerCase();
+  if (url.includes("fastplay"))
+    return "FastPlay";
+  if (url.includes("setprime") || url.includes("stplay.cfd"))
+    return "SetPrime";
+  if (url.includes("setplay"))
+    return "SetPlay";
+  if (url.includes("vidmoly"))
+    return "VidMoly";
+  return "Player";
 }
 function getNonce() {
   return __async(this, arguments, function* (type = "video", referer = MAIN_URL) {
@@ -464,11 +492,6 @@ function extractStreams(tmdbId, mediaType, season, episode) {
       const $ = import_cheerio_without_node_native2.default.load(pageHtml);
       const videoNonce = yield getNonce("video", contentUrl);
       const streams = [];
-      const partLabels = {
-        "turkcedublaj": "Dublaj",
-        "turkcealtyazi": "Altyaz\u0131",
-        "orijinal": "Orijinal"
-      };
       let playerElements = $("a[data-player-name]");
       if (playerElements.length === 0) {
         playerElements = $("nav.player a");
@@ -484,8 +507,10 @@ function extractStreams(tmdbId, mediaType, season, episode) {
           fetchPromises.push((() => __async(this, null, function* () {
             const iframeUrl = yield fetchVideoUrl(postId, playerName, partKey, videoNonce, contentUrl);
             if (iframeUrl) {
-              const label = partLabels[partKey] || partKey || "";
-              const title = [playerName, label].filter(Boolean).join(" | ");
+              const langLabel = toDisplayLanguage(partKey, $(el).text().trim());
+              const playerLabel = toDisplayPlayer(playerName, iframeUrl);
+              const title = `${playerLabel} | ${langLabel}`;
+              const displayName = `${PROVIDER_NAME} - ${langLabel}`;
               let resolved = null;
               const lowerIframe = iframeUrl.toLowerCase();
               if (lowerIframe.includes("fastplay.mom")) {
@@ -498,7 +523,7 @@ function extractStreams(tmdbId, mediaType, season, episode) {
               }
               if (resolved) {
                 streams.push(__spreadValues({
-                  name: PROVIDER_NAME,
+                  name: displayName,
                   title
                 }, resolved));
               } else {
@@ -510,7 +535,7 @@ function extractStreams(tmdbId, mediaType, season, episode) {
                   finalUrl += finalUrl.includes("#") ? "" : "#.mkv";
                 }
                 streams.push({
-                  name: PROVIDER_NAME,
+                  name: displayName,
                   title,
                   url: finalUrl,
                   quality: "Auto",
@@ -522,7 +547,16 @@ function extractStreams(tmdbId, mediaType, season, episode) {
         }
       });
       yield Promise.all(fetchPromises);
-      return streams;
+      const dedup = [];
+      const seen = /* @__PURE__ */ new Set();
+      for (const stream of streams) {
+        const key = `${stream.url}|${stream.title}|${stream.name}`;
+        if (seen.has(key))
+          continue;
+        seen.add(key);
+        dedup.push(stream);
+      }
+      return dedup;
     } catch (error) {
       console.error(`[${PROVIDER_NAME}] Extractor error: ${error.message}`);
       return [];
