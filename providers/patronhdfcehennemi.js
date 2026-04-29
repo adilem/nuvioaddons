@@ -1,6 +1,6 @@
 /**
  * patronhdfcehennemi - Built from src/patronhdfcehennemi/
- * Generated: 2026-04-22T14:33:04.082Z
+ * Generated: 2026-04-29T15:09:25.277Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -38,7 +38,10 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
@@ -149,6 +152,16 @@ function getTmdbTitle(tmdbId, mediaType) {
 
 // src/patronhdfcehennemi/extractor.js
 var PROVIDER_NAME = "PatronHDFCehennemi";
+function inferLangFromSource(source = "") {
+  const value = source.toLowerCase();
+  if (value.includes(" d ") || value.includes("dublaj"))
+    return "Dublaj";
+  if (value.includes(" a ") || value.includes("altyazi") || value.includes("altyaz\u0131"))
+    return "Altyazi";
+  if (value.includes("orijinal"))
+    return "Orijinal";
+  return "Bilinmiyor";
+}
 function normalizeTitle(value) {
   return (value || "").toLowerCase().replace(/[^a-z0-9çğıöşü]+/gi, " ").trim();
 }
@@ -391,8 +404,9 @@ function resolveIframeSource(source, iframeUrl, pageUrl) {
       return null;
     const tracks = parseTracks(script).filter((item) => item.kind === "captions" && item.file);
     const subtitleNote = tracks.length ? ` | Subs: ${tracks.length}` : "";
+    const lang = inferLangFromSource(source);
     return {
-      name: PROVIDER_NAME,
+      name: `${PROVIDER_NAME} - ${lang}`,
       title: `${source}${subtitleNote}`,
       url: videoUrl,
       quality: "Auto",

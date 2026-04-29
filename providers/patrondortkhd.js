@@ -1,6 +1,6 @@
 /**
  * patrondortkhd - Built from src/patrondortkhd/
- * Generated: 2026-04-22T15:45:56.394Z
+ * Generated: 2026-04-29T15:04:10.218Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -226,6 +226,43 @@ function decodeBase64(value) {
 function normalizeTitle(value) {
   return (value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
+function inferLanguageLabel(text = "") {
+  const v = text.toLowerCase();
+  if (v.includes("dublaj") || v.includes("dubbed") || v.includes("hindi"))
+    return "Dublaj";
+  if (v.includes("altyazi") || v.includes("altyaz\u0131") || v.includes("sub"))
+    return "Altyazi";
+  if (v.includes("dual audio"))
+    return "Dual";
+  if (v.includes("original"))
+    return "Orijinal";
+  return "Bilinmiyor";
+}
+function inferSourceLabel(text = "", url = "") {
+  const raw = (text || "").trim();
+  if (raw)
+    return raw;
+  const lower = (url || "").toLowerCase();
+  if (lower.includes("hubcloud"))
+    return "HubCloud";
+  if (lower.includes("hubdrive"))
+    return "HubDrive";
+  if (lower.includes("hubcdn"))
+    return "HubCDN";
+  if (lower.includes("hblinks"))
+    return "HBLinks";
+  if (lower.includes("pixeldrain"))
+    return "Pixeldrain";
+  return "Kaynak";
+}
+function buildDisplayMeta(sourceTitle = "", url = "") {
+  const source = inferSourceLabel(sourceTitle, url);
+  const lang = inferLanguageLabel(sourceTitle);
+  return {
+    displayName: `${PROVIDER_NAME} - ${lang}`,
+    displayTitle: `${source} | ${lang}`
+  };
+}
 function parseQuality(text) {
   const value = (text || "").toLowerCase();
   if (/2160p|4k|uhd/.test(value))
@@ -346,10 +383,19 @@ function collectMovieLinks($, pageUrl) {
   const links = [];
   $("div.download-item a[href]").each((_, el) => {
     const href = fixUrl($(el).attr("href"), pageUrl);
-    if (href)
-      links.push(href);
+    if (!href)
+      return;
+    const text = $(el).text().trim() || $(el).attr("title") || $(el).closest("div.download-item").text().trim();
+    links.push({ url: href, label: text || "Film" });
   });
-  return [...new Set(links)];
+  const seen = /* @__PURE__ */ new Set();
+  return links.filter((item) => {
+    const key = `${item.url}|${item.label}`;
+    if (seen.has(key))
+      return false;
+    seen.add(key);
+    return true;
+  });
 }
 function collectEpisodeLinks($, pageUrl, season, episode) {
   const directEpisodeLinks = [];
@@ -365,13 +411,22 @@ function collectEpisodeLinks($, pageUrl, season, episode) {
         return;
       $(episodeEl).find("a[href]").each((___, linkEl) => {
         const href = fixUrl($(linkEl).attr("href"), pageUrl);
-        if (href)
-          directEpisodeLinks.push(href);
+        if (!href)
+          return;
+        const text = $(linkEl).text().trim() || $(episodeEl).text().trim();
+        directEpisodeLinks.push({ url: href, label: text || `S${season}E${episode}` });
       });
     });
   });
   if (directEpisodeLinks.length) {
-    return [...new Set(directEpisodeLinks)];
+    const seen2 = /* @__PURE__ */ new Set();
+    return directEpisodeLinks.filter((item) => {
+      const key = `${item.url}|${item.label}`;
+      if (seen2.has(key))
+        return false;
+      seen2.add(key);
+      return true;
+    });
   }
   const packLinks = [];
   $("div.download-item").each((_, item) => {
@@ -381,20 +436,30 @@ function collectEpisodeLinks($, pageUrl, season, episode) {
       return;
     $(item).find("a[href]").each((__, linkEl) => {
       const href = fixUrl($(linkEl).attr("href"), pageUrl);
-      if (href)
-        packLinks.push(href);
+      if (!href)
+        return;
+      const text = $(linkEl).text().trim() || headerText;
+      packLinks.push({ url: href, label: text || headerText || `S${season} Pack` });
     });
   });
-  return [...new Set(packLinks)];
+  const seen = /* @__PURE__ */ new Set();
+  return packLinks.filter((item) => {
+    const key = `${item.url}|${item.label}`;
+    if (seen.has(key))
+      return false;
+    seen.add(key);
+    return true;
+  });
 }
 function buildStream(title, url, quality = "Auto", headers = {}) {
   let finalUrl = url;
   if (!/\.(m3u8|mp4|mkv)/i.test(finalUrl)) {
     finalUrl += finalUrl.includes("#") ? "" : "#.mkv";
   }
+  const meta = buildDisplayMeta(title, finalUrl);
   return {
-    name: PROVIDER_NAME,
-    title,
+    name: meta.displayName,
+    title: meta.displayTitle,
     url: finalUrl,
     quality,
     headers: Object.keys(headers).length ? headers : void 0
@@ -564,10 +629,10 @@ function extractStreams(tmdbId, mediaType, season, episode) {
       return [];
     }
     const allStreams = [];
-    for (const link of links) {
-      allStreams.push(...yield resolveLink(link, PROVIDER_NAME, contentUrl));
+    for (const linkItem of links) {
+      allStreams.push(...yield resolveLink(linkItem.url, linkItem.label || PROVIDER_NAME, contentUrl));
     }
-    const directLinks = links.filter((link) => /\.(m3u8|mp4|mkv)(\?|$)/i.test(link)).map((link) => buildStream(PROVIDER_NAME, link, parseQuality(link), { Referer: contentUrl }));
+    const directLinks = links.filter((linkItem) => /\.(m3u8|mp4|mkv)(\?|$)/i.test(linkItem.url)).map((linkItem) => buildStream(linkItem.label || PROVIDER_NAME, linkItem.url, parseQuality(linkItem.url), { Referer: contentUrl }));
     return dedupeStreams([...allStreams, ...directLinks]);
   });
 }
