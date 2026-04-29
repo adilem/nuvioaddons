@@ -1,6 +1,6 @@
 /**
  * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-04-29T14:11:59.247Z
+ * Generated: 2026-04-29T14:21:48.872Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -22,10 +22,6 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -42,7 +38,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
@@ -63,13 +58,6 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-
-// src/patronFilmEkseni/index.js
-var patronFilmEkseni_exports = {};
-__export(patronFilmEkseni_exports, {
-  getStreams: () => getStreams
-});
-module.exports = __toCommonJS(patronFilmEkseni_exports);
 
 // src/patronFilmEkseni/http.js
 var MAIN_URL = "https://filmekseni.cc";
@@ -384,3 +372,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
     }
   });
 }
+module.exports = { getStreams };
