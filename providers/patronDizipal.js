@@ -72,12 +72,8 @@ var HEADERS = {
   "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
 };
 var KNOWN_DOMAINS = [
-  "https://dizipal2063.com",
   "https://dizipal2064.com",
-  "https://dizipal2062.com",
-  "https://dizipal2061.com",
-  "https://dizipal2060.com",
-  "https://dizipal2059.com"
+  "https://dizipal2065.com"
 ];
 var _resolvedUrl = null;
 function resolveMainUrl() {
