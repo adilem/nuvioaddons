@@ -1,6 +1,6 @@
 /**
  * patronMulti - Built from src/patronMulti/
- * Generated: 2026-04-29T15:18:05.584Z
+ * Generated: 2026-04-29T15:24:03.566Z
  */
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
@@ -99,6 +99,29 @@ function parseM3U8(content, baseUrl) {
   }
   return streams;
 }
+function parseSubtitleTracks(content, baseUrl) {
+  var lines = content.split("\n").map(function(l) {
+    return l.trim();
+  }).filter(Boolean);
+  var tracks = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (!line.startsWith("#EXT-X-MEDIA:"))
+      continue;
+    if (!/TYPE=SUBTITLES/i.test(line))
+      continue;
+    var uriMatch = line.match(/URI="([^"]+)"/i);
+    if (!uriMatch || !uriMatch[1])
+      continue;
+    var langMatch = line.match(/LANGUAGE="([^"]+)"/i);
+    var nameMatch = line.match(/NAME="([^"]+)"/i);
+    tracks.push({
+      file: resolveUrl(uriMatch[1], baseUrl),
+      label: nameMatch && nameMatch[1] || langMatch && langMatch[1] || "Subtitle"
+    });
+  }
+  return tracks;
+}
 function resolveUrl(url, baseUrl) {
   if (url.startsWith("http"))
     return url;
@@ -175,6 +198,7 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
           if (plRes.ok) {
             var plText = yield plRes.text();
             var parsed = parseM3U8(plText, data.stream.playlist);
+            var subtitles = parseSubtitleTracks(plText, data.stream.playlist);
             if (parsed.length > 0) {
               parsed.forEach(function(s) {
                 var q = qualityFromResolution(s.resolution);
@@ -184,6 +208,7 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
                   name: meta.name,
                   title: meta.title,
                   quality: q,
+                  subtitles: subtitles.length ? subtitles : void 0,
                   headers: streamHeaders
                 });
               });
@@ -194,6 +219,7 @@ function tryVidLink(tmdbId, mediaType, season, episode, title, year) {
                 name: buildLabel("VidLink", "Auto", displayTitle).name,
                 title: buildLabel("VidLink", "Auto", displayTitle).title,
                 quality: "Auto",
+                subtitles: subtitles.length ? subtitles : void 0,
                 headers: streamHeaders
               });
               console.log(`[PatronMulti V${VERSION}] VidLink: tek stream d\xF6nd\xFCr\xFCld\xFC (master playlist)`);
