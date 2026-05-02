@@ -1,6 +1,6 @@
 /**
  * patronFilmMakinesi - Built from src/patronFilmMakinesi/
- * Generated: 2026-04-29T15:16:07.734Z
+ * Generated: 2026-05-02T18:31:24.879Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -82,32 +82,32 @@ var HEADERS = {
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 };
 function fetchText(_0) {
-  return __async(this, arguments, function* (url2, options = {}) {
+  return __async(this, arguments, function* (url, options = {}) {
     try {
       const fetchOptions = __spreadValues({
         headers: __spreadValues(__spreadValues({}, HEADERS), options.headers || {})
       }, options);
-      const response2 = yield fetch(url2, fetchOptions);
-      if (!response2.ok) {
-        throw new Error(`HTTP Error: ${response2.status}`);
+      const response = yield fetch(url, fetchOptions);
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
       }
-      return yield response2.text();
+      return yield response.text();
     } catch (e) {
-      console.error(`[PatronFilmMakinesi] fetchText hatas\u0131 (${url2}):`, e.message);
+      console.error(`[PatronFilmMakinesi] fetchText hatas\u0131 (${url}):`, e.message);
       throw e;
     }
   });
 }
-function fixUrl(url2) {
-  if (!url2)
+function fixUrl(url) {
+  if (!url)
     return "";
-  if (url2.startsWith("http"))
-    return url2;
-  if (url2.startsWith("//"))
-    return "https:" + url2;
-  if (url2.startsWith("/"))
-    return MAIN_URL + url2;
-  return MAIN_URL + "/" + url2;
+  if (url.startsWith("http"))
+    return url;
+  if (url.startsWith("//"))
+    return "https:" + url;
+  if (url.startsWith("/"))
+    return MAIN_URL + url;
+  return MAIN_URL + "/" + url;
 }
 
 // src/patronFilmMakinesi/tmdb.js
@@ -115,29 +115,29 @@ function getTmdbTitle(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
       const type = mediaType === "movie" ? "movie" : "tv";
-      const url2 = `https://www.themoviedb.org/${type}/${tmdbId}?language=tr-TR`;
-      const response2 = yield fetch(url2, {
+      const url = `https://www.themoviedb.org/${type}/${tmdbId}?language=tr-TR`;
+      const response = yield fetch(url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
         }
       });
-      if (!response2.ok) {
-        throw new Error(`TMDB HTML fetch hatas\u0131: ${response2.status}`);
+      if (!response.ok) {
+        throw new Error(`TMDB HTML fetch hatas\u0131: ${response.status}`);
       }
-      const html2 = yield response2.text();
+      const html = yield response.text();
       let title = "";
-      const ogMatch = html2.match(/<meta property="og:title" content="([^"]+)">/);
+      const ogMatch = html.match(/<meta property="og:title" content="([^"]+)">/);
       if (ogMatch) {
         title = ogMatch[1];
       } else {
-        const titleMatch = html2.match(/<title>([^<]+)<\/title>/);
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/);
         if (titleMatch) {
           title = titleMatch[1].split("(")[0].split("\u2014")[0].trim();
         }
       }
       let origTitle = title;
-      const origMatch = html2.match(/<h3 class="caption" dir="auto">([^<]+)<\/h3>/) || html2.match(/<strong class="original_title">([^<]+)<\/strong>/);
+      const origMatch = html.match(/<h3 class="caption" dir="auto">([^<]+)<\/h3>/) || html.match(/<strong class="original_title">([^<]+)<\/strong>/);
       if (origMatch) {
         let matchedOrig = origMatch[1].replace("Orijinal Ad\u0131", "").trim();
         if (matchedOrig.length > 0)
@@ -154,22 +154,23 @@ function getTmdbTitle(tmdbId, mediaType) {
 // src/patronFilmMakinesi/extractors/closeload.js
 function decodeBase64Latin1(input) {
   try {
-    if (typeof atob === "function")
+    if (typeof atob === "function") {
       return atob(input);
+    }
     return Buffer.from(input, "base64").toString("latin1");
   } catch (e) {
     return input;
   }
 }
-function rot13(str) {
+function rotN(str, shift) {
   return str.replace(/[a-zA-Z]/g, (c) => {
     const base = c <= "Z" ? 65 : 97;
-    return String.fromCharCode((c.charCodeAt(0) - base + 13) % 26 + base);
+    return String.fromCharCode((c.charCodeAt(0) - base + shift) % 26 + base);
   });
 }
-function decryptNative(html2) {
+function decryptNative(html) {
   try {
-    const scriptBlockMatch = html2.match(
+    const scriptBlockMatch = html.match(
       /<script[^>]*>([\s\S]*?dc_[a-zA-Z0-9_]+\([\s\S]*?)<\/script>/i
     );
     const scriptContent = scriptBlockMatch == null ? void 0 : scriptBlockMatch[1];
@@ -182,17 +183,19 @@ function decryptNative(html2) {
     const moduloMatch = scriptContent.match(/(\d+)\s*%\s*\(i\s*\+\s*(\d+)\)/);
     const magicNum = (moduloMatch == null ? void 0 : moduloMatch[1]) ? Number(moduloMatch[1]) : 399756995;
     const magicOffset = (moduloMatch == null ? void 0 : moduloMatch[2]) ? Number(moduloMatch[2]) : 5;
-    const functionBodyMatch = scriptContent.match(
+    const funcBodyMatch = scriptContent.match(
       /function\s+dc_[a-zA-Z0-9_]+\s*\([^)]*\)\s*\{([\s\S]*?)return\s+unmix;/
     );
-    const functionBody = (functionBodyMatch == null ? void 0 : functionBodyMatch[1]) || scriptContent;
+    const functionBody = (funcBodyMatch == null ? void 0 : funcBodyMatch[1]) || scriptContent;
+    const rotShiftMatch = functionBody.match(/charCodeAt\(0\)\s*\+\s*(\d+)/);
+    const rotShift = (rotShiftMatch == null ? void 0 : rotShiftMatch[1]) ? Number(rotShiftMatch[1]) : 13;
     const reverseIdx = functionBody.indexOf(".reverse()");
     const atobIdx = functionBody.indexOf("atob(");
-    const rot13Idx = functionBody.search(/\.replace\(\s*\/\[a-zA-Z\]\/g/);
+    const rotIdx = functionBody.search(/\.replace\(\s*\/\[a-zA-Z\]\/g/);
     const operations = [
       { idx: reverseIdx, op: "reverse" },
       { idx: atobIdx, op: "atob" },
-      { idx: rot13Idx, op: "rot13" }
+      { idx: rotIdx, op: "rot" }
     ].filter((x) => x.idx !== -1).sort((a, b) => a.idx - b.idx);
     let result = parts.join("");
     for (const { op } of operations) {
@@ -200,29 +203,27 @@ function decryptNative(html2) {
         result = result.split("").reverse().join("");
       else if (op === "atob")
         result = decodeBase64Latin1(result);
-      else if (op === "rot13")
-        result = rot13(result);
+      else if (op === "rot")
+        result = rotN(result, rotShift);
     }
     let unmix = "";
     for (let i = 0; i < result.length; i++) {
-      const charCode = result.charCodeAt(i);
-      const decryptedCode = (charCode - magicNum % (i + magicOffset) + 256) % 256;
+      const decryptedCode = (result.charCodeAt(i) - magicNum % (i + magicOffset) + 256) % 256;
       unmix += String.fromCharCode(decryptedCode);
     }
-    return unmix;
+    return unmix || null;
   } catch (e) {
     return null;
   }
 }
-function processSubtitles(html2) {
+function processSubtitles(html) {
   var _a, _b, _c;
   const subtitles = [];
   try {
-    const tracksMatch = html2.match(/tracks\s*:\s*(\[[\s\S]*?\])/i);
+    const tracksMatch = html.match(/tracks\s*:\s*(\[[\s\S]*?\])/i);
     if (!(tracksMatch == null ? void 0 : tracksMatch[1]))
       return subtitles;
-    const tracksJson = tracksMatch[1];
-    const blocks = tracksJson.match(/\{[^}]*\}/g) || [];
+    const blocks = tracksMatch[1].match(/\{[^}]*\}/g) || [];
     for (const block of blocks) {
       const file = (_b = (_a = block.match(/"file"\s*:\s*"([^"]+)"/)) == null ? void 0 : _a[1]) == null ? void 0 : _b.replace(/\\\//g, "/");
       const label = ((_c = block.match(/"label"\s*:\s*"([^"]+)"/)) == null ? void 0 : _c[1]) || "Altyaz\u0131";
@@ -234,41 +235,49 @@ function processSubtitles(html2) {
   }
   return subtitles;
 }
-function extractCloseLoad(url2, referer2) {
+function extractCloseLoad(url, referer) {
   return __async(this, null, function* () {
     var _a;
     try {
-      const headers2 = {
+      const CLOSELOAD_ORIGIN = "https://closeload.filmmakinesi.to";
+      const headers = {
         "User-Agent": HEADERS["User-Agent"],
-        "Referer": referer2 || "https://closeload.filmmakinesi.to/",
-        "Origin": "https://closeload.filmmakinesi.to"
+        "Referer": referer || CLOSELOAD_ORIGIN + "/",
+        "Origin": CLOSELOAD_ORIGIN,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
       };
-      const response2 = yield fetch(url2, { headers: headers2 });
-      const html2 = yield response2.text();
-      let videoUrl = decryptNative(html2);
+      const response = yield fetch(url, { headers });
+      if (!response.ok) {
+        console.warn(`[CloseLoad] HTTP ${response.status} \u2014 ${url}`);
+        return null;
+      }
+      const html = yield response.text();
+      let videoUrl = decryptNative(html);
       if (!videoUrl) {
-        const ldMatch = html2.match(/"contentUrl"\s*:\s*"([^"]+)"/i);
-        videoUrl = (_a = ldMatch == null ? void 0 : ldMatch[1]) == null ? void 0 : _a.replace(/\\\//g, "/");
+        const ldMatch = html.match(/"contentUrl"\s*:\s*"([^"]+)"/i);
+        videoUrl = ((_a = ldMatch == null ? void 0 : ldMatch[1]) == null ? void 0 : _a.replace(/\\\//g, "/")) || null;
       }
       if (!videoUrl) {
-        const direct = html2.match(/file\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)["']/i) || html2.match(/["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*)["']/i);
+        const direct = html.match(/file\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)['"]/i) || html.match(/["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*)['"]/i) || html.match(/source\s*:\s*["']([^"']+)['"]/i);
         videoUrl = (direct == null ? void 0 : direct[1]) || null;
       }
       if (videoUrl && /^https?:\/\//i.test(videoUrl)) {
-        const subtitles = processSubtitles(html2);
+        const subtitles = processSubtitles(html);
         return {
           url: videoUrl,
           quality: "1080p",
           headers: {
-            Referer: "https://closeload.filmmakinesi.to/",
+            "Referer": CLOSELOAD_ORIGIN + "/",
             "User-Agent": HEADERS["User-Agent"]
           },
           subtitles
         };
       }
+      console.warn("[CloseLoad] Video URL \xE7\u0131kar\u0131lamad\u0131:", url);
       return null;
     } catch (err) {
-      console.error("[CloseLoad] Error extracting:", (err == null ? void 0 : err.message) || err);
+      console.error("[CloseLoad] Hata:", (err == null ? void 0 : err.message) || err);
       return null;
     }
   });
@@ -293,38 +302,38 @@ function unpackJS(code) {
       map[e(i)] = k[i];
     }
     const dictRegex = new RegExp("\\b(" + Object.keys(map).filter((key) => key).join("|") + ")\\b", "g");
-    const unpacked2 = p.replace(dictRegex, function(match2) {
+    const unpacked = p.replace(dictRegex, function(match2) {
       return map[match2] || match2;
     });
-    return unpacked2;
+    return unpacked;
   } catch (err) {
     return code;
   }
 }
-function extractVidMoly(url2, referer2) {
+function extractVidMoly(url, referer) {
   return __async(this, null, function* () {
     try {
-      let fetchUrl = url2;
+      let fetchUrl = url;
       fetchUrl = fetchUrl.replace(/https?:\/\/vidmoly\.[a-z]+/, "https://vidmoly.me");
       fetchUrl = fetchUrl.replace(/\/embed-([a-z0-9]+)\.html/, "/w/$1");
-      let headers2 = {
+      let headers = {
         "User-Agent": HEADERS["User-Agent"],
         "Sec-Fetch-Dest": "iframe"
       };
-      if (referer2)
-        headers2["Referer"] = referer2;
-      let response2 = yield fetch(fetchUrl, { headers: headers2 });
-      let html2 = yield response2.text();
-      if (html2.toLowerCase().includes("video not found") || html2.toLowerCase().includes("file was deleted")) {
+      if (referer)
+        headers["Referer"] = referer;
+      let response = yield fetch(fetchUrl, { headers });
+      let html = yield response.text();
+      if (html.toLowerCase().includes("video not found") || html.toLowerCase().includes("file was deleted")) {
         return null;
       }
-      if (html2.includes("Select number") || html2.toLowerCase().includes("select the number")) {
-        const $ = cheerio2.load(html2);
+      if (html.includes("Select number") || html.toLowerCase().includes("select the number")) {
+        const $ = cheerio2.load(html);
         const opVal = $("input[name='op']").val();
         const fileCodeVal = $("input[name='file_code']").val();
         let answerVal = $("div.vhint b").text() || $("span.vhint b").text();
         if (!answerVal) {
-          const ansMatch = html2.match(/Please select (\d+)/i);
+          const ansMatch = html.match(/Please select (\d+)/i);
           if (ansMatch)
             answerVal = ansMatch[1];
         }
@@ -341,18 +350,18 @@ function extractVidMoly(url2, referer2) {
           formData.append("ctok", ctokVal);
           let postResponse = yield fetch(fetchUrl, {
             method: "POST",
-            headers: __spreadProps(__spreadValues({}, headers2), { "Content-Type": "application/x-www-form-urlencoded" }),
+            headers: __spreadProps(__spreadValues({}, headers), { "Content-Type": "application/x-www-form-urlencoded" }),
             body: formData.toString()
           });
-          html2 = yield postResponse.text();
+          html = yield postResponse.text();
         }
       }
       let videoUrl = null;
-      const scriptMatches = html2.match(/eval\(function\(p,a,c,k,e,?[d]?\).*?\)\)/g);
+      const scriptMatches = html.match(/eval\(function\(p,a,c,k,e,?[d]?\).*?\)\)/g);
       if (scriptMatches) {
         for (let script of scriptMatches) {
-          const unpacked2 = unpackJS(script);
-          const vidMatch = unpacked2.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || unpacked2.match(/file\s*:\s*["']([^"']+\.mp4[^"']*)["']/i);
+          const unpacked = unpackJS(script);
+          const vidMatch = unpacked.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || unpacked.match(/file\s*:\s*["']([^"']+\.mp4[^"']*)["']/i);
           if (vidMatch) {
             videoUrl = vidMatch[1];
             break;
@@ -360,7 +369,7 @@ function extractVidMoly(url2, referer2) {
         }
       }
       if (!videoUrl) {
-        const vidMatch = html2.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || html2.match(/file\s*:\s*["']([^"']+\.mp4[^"']*)["']/i);
+        const vidMatch = html.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || html.match(/file\s*:\s*["']([^"']+\.mp4[^"']*)["']/i);
         if (vidMatch) {
           videoUrl = vidMatch[1];
         }
@@ -380,18 +389,18 @@ function extractVidMoly(url2, referer2) {
 }
 
 // src/patronFilmMakinesi/extractors/sibnet.js
-function extractSibnet(url2) {
+function extractSibnet(url) {
   return __async(this, null, function* () {
     try {
-      const fetchUrl = url2;
-      const response2 = yield fetch(fetchUrl, {
+      const fetchUrl = url;
+      const response = yield fetch(fetchUrl, {
         headers: {
           "User-Agent": HEADERS["User-Agent"],
           "Referer": "https://video.sibnet.ru/"
         }
       });
-      const html2 = yield response2.text();
-      const match = html2.match(/src\s*:\s*["'](\/v\/[^"']+)["']/);
+      const html = yield response.text();
+      const match = html.match(/src\s*:\s*["'](\/v\/[^"']+)["']/);
       if (match) {
         let videoUrl = "https://video.sibnet.ru" + match[1];
         try {
@@ -400,7 +409,7 @@ function extractSibnet(url2) {
             redirect: "manual",
             headers: {
               "User-Agent": HEADERS["User-Agent"],
-              "Referer": url2
+              "Referer": url
             }
           });
           let finalUrl = redirectRes.headers.get("location");
@@ -415,7 +424,7 @@ function extractSibnet(url2) {
         }
         return {
           url: videoUrl,
-          headers: { "Referer": url2 }
+          headers: { "Referer": url }
         };
       }
       return null;
@@ -429,52 +438,87 @@ function extractSibnet(url2) {
 function extractRapid(url, referer) {
   return __async(this, null, function* () {
     try {
-      let headers = {
+      const origin = new URL(url).origin;
+      const headers = {
         "User-Agent": HEADERS["User-Agent"],
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Referer": referer || "https://filmmakinesi.to/"
+        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": referer || "https://filmmakinesi.to/",
+        "Origin": origin
       };
-      let response = yield fetch(url, { headers });
-      let html = yield response.text();
+      const response = yield fetch(url, { headers });
+      if (!response.ok) {
+        console.warn(`[Rapid] HTTP ${response.status} \u2014 ${url}`);
+        return null;
+      }
+      const html = yield response.text();
       const pLoc = html.indexOf("eval(function(p,a,c,k,e,d)");
-      if (pLoc > -1) {
-        let count = 0;
-        let endObj = pLoc;
+      if (pLoc !== -1) {
+        let count = 0, endObj = pLoc;
         for (let i = pLoc + 4; i < html.length; i++) {
-          if (html[i] == "(")
+          if (html[i] === "(")
             count++;
-          else if (html[i] == ")") {
+          else if (html[i] === ")") {
             count--;
-            if (count == 0) {
+            if (count === 0) {
               endObj = i + 1;
               break;
             }
           }
         }
         const packed = html.substring(pLoc, endObj);
-        const evalCode = packed.replace(/^eval\(/, "(");
-        const unpacked = eval(evalCode);
-        const varNameMatch = unpacked.match(/var\s+([A-Za-z0-9_]+)\s*=\s*/);
-        if (varNameMatch) {
-          const varName = varNameMatch[1];
-          const streamUrl = new Function(`${unpacked}; return ${varName};`)();
-          if (streamUrl && (streamUrl.includes(".m3u8") || streamUrl.includes(".mp4"))) {
-            const originUrl = new URL(url).origin;
+        const evalStr = packed.replace(/^eval\(/, "(");
+        try {
+          const unpacked = new Function(`return ${evalStr}`)();
+          const streamMatch = unpacked.match(/["'](https?:\/\/[^"']+\.m3u8[^"']*)['"]/i) || unpacked.match(/["'](https?:\/\/[^"']+\.mp4[^"']*)['"]/i) || unpacked.match(/file\s*[=:]\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)['"]/i);
+          if (streamMatch == null ? void 0 : streamMatch[1]) {
             return {
-              url: streamUrl.trim(),
+              url: streamMatch[1].trim(),
               quality: "Auto",
               headers: {
                 "User-Agent": headers["User-Agent"],
-                "Referer": originUrl + "/",
-                "Origin": originUrl
+                "Referer": origin + "/",
+                "Origin": origin
               }
             };
           }
+        } catch (e) {
         }
       }
+      const directMatch = html.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)['"]/i) || html.match(/file\s*:\s*["']([^"']+\.mp4[^"']*)['"]/i) || html.match(/["'](https?:\/\/[^"']+\.m3u8[^"']*)['"]/i) || html.match(/["'](https?:\/\/[^"']+\.mp4[^"']*)['"]/i) || html.match(/source\s*:\s*["']([^"']+\.m3u8[^"']*)['"]/i);
+      if (directMatch == null ? void 0 : directMatch[1]) {
+        return {
+          url: directMatch[1].trim(),
+          quality: "Auto",
+          headers: {
+            "User-Agent": headers["User-Agent"],
+            "Referer": origin + "/",
+            "Origin": origin
+          }
+        };
+      }
+      const b64Match = html.match(/atob\(['"]([A-Za-z0-9+/=]{20,})['"]\)/);
+      if (b64Match == null ? void 0 : b64Match[1]) {
+        try {
+          const decoded = typeof atob === "function" ? atob(b64Match[1]) : Buffer.from(b64Match[1], "base64").toString("utf-8");
+          const urlMatch = decoded.match(/(https?:\/\/[^\s"']+\.m3u8[^\s"']*)/i) || decoded.match(/(https?:\/\/[^\s"']+\.mp4[^\s"']*)/i);
+          if (urlMatch == null ? void 0 : urlMatch[1]) {
+            return {
+              url: urlMatch[1].trim(),
+              quality: "Auto",
+              headers: {
+                "User-Agent": headers["User-Agent"],
+                "Referer": origin + "/"
+              }
+            };
+          }
+        } catch (e) {
+        }
+      }
+      console.warn("[Rapid] Stream URL bulunamad\u0131:", url);
       return null;
     } catch (err) {
-      console.error("[Rapid] Error extracting:", err.message);
+      console.error("[Rapid] Hata:", (err == null ? void 0 : err.message) || err);
       return null;
     }
   });
@@ -504,8 +548,8 @@ function buildMeta(player, label) {
 function searchMovie(query) {
   return __async(this, null, function* () {
     const searchUrl = `${MAIN_URL}/arama/?s=${encodeURIComponent(query)}`;
-    const html2 = yield fetchText(searchUrl);
-    const $ = import_cheerio_without_node_native.default.load(html2);
+    const html = yield fetchText(searchUrl);
+    const $ = import_cheerio_without_node_native.default.load(html);
     const results = [];
     $("div.item-relative").each((i, el) => {
       const anchor = $(el).find("a").first();
@@ -531,8 +575,8 @@ function searchMovie(query) {
 }
 function extractFromMoviePage(movieUrl) {
   return __async(this, null, function* () {
-    const html2 = yield fetchText(movieUrl);
-    const $ = import_cheerio_without_node_native.default.load(html2);
+    const html = yield fetchText(movieUrl);
+    const $ = import_cheerio_without_node_native.default.load(html);
     const streams = [];
     const linkUrls = [];
     const iframeSrc = $("iframe").attr("data-src") || $("iframe").attr("src");
