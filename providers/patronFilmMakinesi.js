@@ -1,6 +1,6 @@
 /**
- * patronfilmmakinesi - Built from src/patronfilmmakinesi/
- * Generated: 2026-05-04T13:22:36.097Z
+ * patronFilmMakinesi - Built from src/patronFilmMakinesi/
+ * Generated: 2026-05-04T14:33:21.104Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -67,14 +67,14 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 
-// src/patronfilmmakinesi/index.js
-var patronfilmmakinesi_exports = {};
-__export(patronfilmmakinesi_exports, {
+// src/patronFilmMakinesi/index.js
+var patronFilmMakinesi_exports = {};
+__export(patronFilmMakinesi_exports, {
   getStreams: () => getStreams
 });
-module.exports = __toCommonJS(patronfilmmakinesi_exports);
+module.exports = __toCommonJS(patronFilmMakinesi_exports);
 
-// src/patronfilmmakinesi/http.js
+// src/patronFilmMakinesi/http.js
 var cheerio = __toESM(require("cheerio-without-node-native"));
 var MAIN_URL = "https://filmmakinesi.to";
 var HEADERS = {
@@ -110,8 +110,10 @@ function fixUrl(url) {
   return MAIN_URL + "/" + url;
 }
 
-// src/patronfilmmakinesi/tmdb.js
-function getTmdbTitle(tmdbId, mediaType) {
+// src/patronFilmMakinesi/tmdb.js
+var TMDB_API_KEY = "500330721680edb6d5f7f12ba7cd9023";
+var PROVIDER_TAG = "[PatronFilmMakinesi]";
+function getTmdbTitleFromHtml(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
       const type = mediaType === "movie" ? "movie" : "tv";
@@ -123,46 +125,87 @@ function getTmdbTitle(tmdbId, mediaType) {
         }
       });
       if (!response.ok) {
-        throw new Error(`TMDB HTML fetch hatas\u0131: ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
       const html = yield response.text();
-      let title = "";
+      let trTitle = "";
       const ogMatch = html.match(/<meta property="og:title" content="([^"]+)">/);
       if (ogMatch) {
-        title = ogMatch[1];
+        trTitle = ogMatch[1];
       } else {
         const titleMatch = html.match(/<title>([^<]+)<\/title>/);
         if (titleMatch) {
-          title = titleMatch[1].split("(")[0].split("\u2014")[0].trim();
+          trTitle = titleMatch[1].split("(")[0].split("\u2014")[0].trim();
         }
       }
-      let origTitle = title;
+      let origTitle = trTitle;
       const origMatch = html.match(/<h3 class="caption" dir="auto">([^<]+)<\/h3>/) || html.match(/<strong class="original_title">([^<]+)<\/strong>/);
       if (origMatch) {
-        let matchedOrig = origMatch[1].replace("Orijinal Ad\u0131", "").trim();
-        if (matchedOrig.length > 0)
-          origTitle = matchedOrig;
+        const cleaned = origMatch[1].replace("Orijinal Ad\u0131", "").trim();
+        if (cleaned.length > 0)
+          origTitle = cleaned;
       }
-      return { trTitle: title, origTitle };
+      if (!trTitle)
+        return null;
+      console.log(`${PROVIDER_TAG} [HTML] Baslik bulundu: ${trTitle}`);
+      return { trTitle, origTitle };
     } catch (e) {
-      console.error(`[PatronFilmMakinesi] TMDB ba\u015Fl\u0131k hatas\u0131: ${e.message}`);
-      return { trTitle: "", origTitle: "" };
+      console.warn(`${PROVIDER_TAG} [HTML] Scraping basarisiz: ${e.message}`);
+      return null;
     }
   });
 }
-
-// src/patronfilmmakinesi/extractors/closeload.js
-function decodeBase64Latin1(input) {
-  input = (input || "").replace(/\s/g, "");
-  while (input.length % 4 !== 0)
-    input += "=";
-  try {
-    if (typeof atob === "function") {
-      return atob(input);
+function getTmdbTitleFromApi(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    try {
+      const type = mediaType === "movie" ? "movie" : "tv";
+      const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`;
+      const response = yield fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = yield response.json();
+      const trTitle = data.title || data.name || "";
+      const origTitle = data.original_title || data.original_name || trTitle;
+      if (!trTitle)
+        return null;
+      console.log(`${PROVIDER_TAG} [API] Baslik bulundu: ${trTitle}`);
+      return { trTitle, origTitle };
+    } catch (e) {
+      console.warn(`${PROVIDER_TAG} [API] REST API basarisiz: ${e.message}`);
+      return null;
     }
-    return Buffer.from(input, "base64").toString("latin1");
+  });
+}
+function getTmdbTitle(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    const htmlResult = yield getTmdbTitleFromHtml(tmdbId, mediaType);
+    if (htmlResult)
+      return htmlResult;
+    console.log(`${PROVIDER_TAG} HTML scraping basarisiz, TMDB REST API deneniyor...`);
+    const apiResult = yield getTmdbTitleFromApi(tmdbId, mediaType);
+    if (apiResult)
+      return apiResult;
+    console.error(`${PROVIDER_TAG} Her iki yontem de basarisiz oldu: TMDB ID=${tmdbId}`);
+    return { trTitle: "", origTitle: "" };
+  });
+}
+
+// src/patronFilmMakinesi/extractors/closeload.js
+function decodeBase64Latin1(input) {
+  try {
+    if (!input)
+      return "";
+    let padded = input.replace(/\s/g, "");
+    while (padded.length % 4 !== 0) {
+      padded += "=";
+    }
+    if (typeof atob === "function") {
+      return atob(padded);
+    }
+    return Buffer.from(padded, "base64").toString("latin1");
   } catch (e) {
-    return "";
+    return input;
   }
 }
 function rotN(str, shift) {
@@ -199,7 +242,6 @@ function decryptNative(html) {
       { idx: atobIdx, op: "atob" },
       { idx: rotIdx, op: "rot" }
     ].filter((x) => x.idx !== -1 && x.idx !== void 0).sort((a, b) => a.idx - b.idx);
-    console.log("[CloseLoad] Operations order:", operations.map((o) => o.op).join(" -> "));
     let result = parts.join("");
     for (const { op } of operations) {
       if (op === "reverse")
@@ -214,7 +256,6 @@ function decryptNative(html) {
       const decryptedCode = (result.charCodeAt(i) - magicNum % (i + magicOffset) + 256) % 256;
       unmix += String.fromCharCode(decryptedCode);
     }
-    console.log("[CloseLoad] Decrypt result prefix:", unmix.substring(0, 120));
     if (unmix && /^https?:\/\//i.test(unmix)) {
       return unmix;
     }
@@ -255,7 +296,6 @@ function extractCloseLoad(url, referer) {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
       };
-      console.log("[CloseLoad] Fetching URL:", url);
       const response = yield fetch(url, { headers });
       if (!response.ok) {
         console.warn(`[CloseLoad] HTTP ${response.status} \u2014 ${url}`);
@@ -283,7 +323,6 @@ function extractCloseLoad(url, referer) {
         }
       }
       if (videoUrl && /^https?:\/\//i.test(videoUrl)) {
-        console.log("[CloseLoad] Found video URL:", videoUrl.substring(0, 120));
         const subtitles = processSubtitles(html);
         return {
           url: videoUrl,
@@ -304,7 +343,7 @@ function extractCloseLoad(url, referer) {
   });
 }
 
-// src/patronfilmmakinesi/extractors/vidmoly.js
+// src/patronFilmMakinesi/extractors/vidmoly.js
 var cheerio2 = __toESM(require("cheerio-without-node-native"));
 function unpackJS(code) {
   try {
@@ -409,7 +448,7 @@ function extractVidMoly(url, referer) {
   });
 }
 
-// src/patronfilmmakinesi/extractors/sibnet.js
+// src/patronFilmMakinesi/extractors/sibnet.js
 function extractSibnet(url) {
   return __async(this, null, function* () {
     try {
@@ -455,7 +494,7 @@ function extractSibnet(url) {
   });
 }
 
-// src/patronfilmmakinesi/extractors/rapid.js
+// src/patronFilmMakinesi/extractors/rapid.js
 function extractRapid(url, referer) {
   return __async(this, null, function* () {
     try {
@@ -545,7 +584,7 @@ function extractRapid(url, referer) {
   });
 }
 
-// src/patronfilmmakinesi/extractor.js
+// src/patronFilmMakinesi/extractor.js
 var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
 function inferLanguage(label = "") {
   const value = (label || "").toLowerCase();
@@ -623,6 +662,7 @@ function extractFromMoviePage(movieUrl) {
               title: meta.title,
               url: clRes.url,
               quality: clRes.quality || "720p",
+              type: "hls",
               headers: clRes.headers || { Referer: MAIN_URL + "/" }
             });
             continue;
@@ -632,13 +672,16 @@ function extractFromMoviePage(movieUrl) {
           const rapidRes = yield extractRapid(embedUrl, movieUrl);
           if (rapidRes) {
             const meta = buildMeta("Rapid", label);
-            streams.push({
+            const stream = {
               name: meta.name,
               title: meta.title,
               url: rapidRes.url,
               quality: rapidRes.quality || "Auto",
               headers: rapidRes.headers
-            });
+            };
+            if (rapidRes.url.includes(".m3u8"))
+              stream.type = "hls";
+            streams.push(stream);
             continue;
           }
         }
@@ -646,13 +689,16 @@ function extractFromMoviePage(movieUrl) {
           const vidmolyRes = yield extractVidMoly(embedUrl, movieUrl);
           if (vidmolyRes) {
             const meta = buildMeta("VidMoly", label);
-            streams.push({
+            const stream = {
               name: meta.name,
               title: meta.title,
               url: vidmolyRes.url,
               quality: "720p",
               headers: __spreadValues(__spreadValues({}, HEADERS), vidmolyRes.headers)
-            });
+            };
+            if (vidmolyRes.url.includes(".m3u8"))
+              stream.type = "hls";
+            streams.push(stream);
             continue;
           }
         }
@@ -660,28 +706,34 @@ function extractFromMoviePage(movieUrl) {
           const sibnetRes = yield extractSibnet(embedUrl);
           if (sibnetRes) {
             const meta = buildMeta("Sibnet", label);
-            streams.push({
+            const stream = {
               name: meta.name,
               title: meta.title,
               url: sibnetRes.url,
               quality: "720p",
               headers: __spreadValues(__spreadValues({}, HEADERS), sibnetRes.headers)
-            });
+            };
+            if (sibnetRes.url.includes(".m3u8"))
+              stream.type = "hls";
+            streams.push(stream);
             continue;
           }
         }
         if (embedUrl.includes(".m3u8") || embedUrl.includes(".mp4")) {
           const meta = buildMeta("Direkt", label);
-          streams.push({
+          const stream = {
             name: meta.name,
             title: meta.title,
             url: embedUrl,
             quality: "720p",
             headers: { Referer: movieUrl }
-          });
+          };
+          if (embedUrl.includes(".m3u8"))
+            stream.type = "hls";
+          streams.push(stream);
         }
       } catch (err) {
-        console.error(`[PatronFilmMakinesi] \xC7\u0131karma hatas\u0131: ${err.message}`);
+        console.error(`[PatronFilmMakinesi] Cikarma hatasi: ${err.message}`);
       }
     }
     return streams;
@@ -692,7 +744,7 @@ function extractStreams(tmdbId, mediaType) {
     if (mediaType !== "movie")
       return [];
     const { trTitle, origTitle } = yield getTmdbTitle(tmdbId, mediaType);
-    console.log(`[PatronFilmMakinesi] TMDB: ${tmdbId} | Ba\u015Fl\u0131k: ${trTitle}`);
+    console.log(`[PatronFilmMakinesi] TMDB: ${tmdbId} | Baslik: ${trTitle}`);
     if (!trTitle && !origTitle)
       return [];
     let movieUrl = null;
@@ -703,7 +755,7 @@ function extractStreams(tmdbId, mediaType) {
       movieUrl = yield searchMovie(origTitle);
     }
     if (!movieUrl) {
-      console.warn(`[PatronFilmMakinesi] Site'de i\xE7erik bulunamad\u0131: ${trTitle || origTitle}`);
+      console.warn(`[PatronFilmMakinesi] Site'de icerik bulunamadi: ${trTitle || origTitle}`);
       return [];
     }
     console.log(`[PatronFilmMakinesi] Sayfa bulundu: ${movieUrl}`);
@@ -713,7 +765,7 @@ function extractStreams(tmdbId, mediaType) {
   });
 }
 
-// src/patronfilmmakinesi/index.js
+// src/patronFilmMakinesi/index.js
 function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
