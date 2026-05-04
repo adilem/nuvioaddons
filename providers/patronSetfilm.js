@@ -1,6 +1,6 @@
 /**
  * patronSetfilm - Built from src/patronSetfilm/
- * Generated: 2026-04-29T15:28:14.711Z
+ * Generated: 2026-05-04T15:05:22.235Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -124,36 +124,38 @@ function fetchJSON(_0) {
 
 // src/patronSetfilm/tmdb.js
 var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
-function getTmdbTitle(tmdbId, mediaType) {
+var TMDB_API_KEY = "500330721680edb6d5f7f12ba7cd9023";
+var PROVIDER_TAG = "[SetFilmIzle]";
+function decodeHtml(text) {
+  return (text || "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#039;/g, "'");
+}
+function getTmdbTitleFromHtml(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
-      let decodeHtml = function(text) {
-        return (text || "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#039;/g, "'");
-      };
       const type = mediaType === "movie" ? "movie" : "tv";
       const url = `https://www.themoviedb.org/${type}/${tmdbId}?language=tr-TR`;
       const response = yield fetch(url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
         }
       });
       if (!response.ok) {
-        throw new Error(`TMDB HTML fetch hatasi: ${response.status}`);
+        throw new Error(`HTTP ${response.status}`);
       }
       const html = yield response.text();
-      let title = "";
+      let trTitle = "";
       const ogMatch = html.match(/<meta property="og:title" content="([^"]+)">/i);
       if (ogMatch) {
-        title = decodeHtml(ogMatch[1]).split("(")[0].trim();
+        trTitle = decodeHtml(ogMatch[1]).split("(")[0].trim();
       } else {
         const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
         if (titleMatch) {
-          title = decodeHtml(titleMatch[1]).split("(")[0].split("\u2014")[0].split("\xE2\u20AC\u201D")[0].trim();
+          trTitle = decodeHtml(titleMatch[1]).split("(")[0].split("\u2014")[0].split("\xE2\u20AC\u201D")[0].trim();
         }
       }
+      let origTitle = trTitle;
       const $ = import_cheerio_without_node_native.default.load(html);
-      let origTitle = title;
       $("section.facts p").each((_, el) => {
         const text = $(el).text();
         if (text.includes("Orijinal Ba\u015Fl\u0131k") || text.includes("Original Title")) {
@@ -162,7 +164,7 @@ function getTmdbTitle(tmdbId, mediaType) {
             origTitle = decodeHtml(found);
         }
       });
-      if (origTitle === title) {
+      if (origTitle === trTitle) {
         const origMatch = html.match(/<h3 class="caption" dir="auto">([^<]+)<\/h3>/i) || html.match(/<strong class="original_title">([^<]+)<\/strong>/i);
         if (origMatch) {
           const matched = decodeHtml(origMatch[1]).replace("Orijinal Adi", "").replace("Orijinal Ad\u0131", "").trim();
@@ -174,11 +176,53 @@ function getTmdbTitle(tmdbId, mediaType) {
       if (origTitle && (origTitle.includes(":") || origTitle.toLowerCase().includes(" and "))) {
         shortTitle = origTitle.split(":")[0].split(/ and /i)[0].trim();
       }
-      return { trTitle: title, origTitle, shortTitle };
-    } catch (error) {
-      console.error(`[TMDB] Baslik hatasi: ${error.message}`);
-      return { trTitle: "", origTitle: "", shortTitle: "" };
+      if (!trTitle)
+        return null;
+      console.log(`${PROVIDER_TAG} [HTML] Baslik bulundu: ${trTitle}`);
+      return { trTitle, origTitle, shortTitle };
+    } catch (e) {
+      console.warn(`${PROVIDER_TAG} [HTML] Scraping basarisiz: ${e.message}`);
+      return null;
     }
+  });
+}
+function getTmdbTitleFromApi(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    try {
+      const type = mediaType === "movie" ? "movie" : "tv";
+      const url = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`;
+      const response = yield fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = yield response.json();
+      const trTitle = data.title || data.name || "";
+      const origTitle = data.original_title || data.original_name || trTitle;
+      let shortTitle = "";
+      if (origTitle && (origTitle.includes(":") || origTitle.toLowerCase().includes(" and "))) {
+        shortTitle = origTitle.split(":")[0].split(/ and /i)[0].trim();
+      }
+      if (!trTitle)
+        return null;
+      console.log(`${PROVIDER_TAG} [API] Baslik bulundu: ${trTitle}`);
+      return { trTitle, origTitle, shortTitle };
+    } catch (e) {
+      console.warn(`${PROVIDER_TAG} [API] REST API basarisiz: ${e.message}`);
+      return null;
+    }
+  });
+}
+function getTmdbTitle(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    const htmlResult = yield getTmdbTitleFromHtml(tmdbId, mediaType);
+    if (htmlResult)
+      return htmlResult;
+    console.log(`${PROVIDER_TAG} HTML scraping basarisiz, TMDB REST API deneniyor...`);
+    const apiResult = yield getTmdbTitleFromApi(tmdbId, mediaType);
+    if (apiResult)
+      return apiResult;
+    console.error(`${PROVIDER_TAG} Her iki yontem de basarisiz oldu: TMDB ID=${tmdbId}`);
+    return { trTitle: "", origTitle: "", shortTitle: "" };
   });
 }
 
@@ -187,33 +231,42 @@ var PROVIDER_NAME = "SetFilmIzle";
 function normalizeTitle(value) {
   return (value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
-function toDisplayLanguage(partKey = "", rawText = "") {
+function detectLang(partKey = "", rawText = "") {
   const v = `${partKey} ${rawText}`.toLowerCase();
   if (v.includes("dublaj"))
     return "TR Dublaj";
   if (v.includes("altyazi") || v.includes("altyaz\u0131"))
-    return "TR Altyazi";
+    return "TR Altyaz\u0131";
   if (v.includes("orijinal"))
     return "Orijinal";
   return "Bilinmiyor";
 }
-function toDisplayPlayer(playerName = "", iframeUrl = "") {
-  const name = (playerName || "").trim();
-  if (name)
-    return name;
-  const url = (iframeUrl || "").toLowerCase();
-  if (url.includes("fastplay"))
+function detectPlayer(name, url) {
+  const n = (name || "").trim();
+  if (n)
+    return n;
+  const u = (url || "").toLowerCase();
+  if (u.includes("fastplay"))
     return "FastPlay";
-  if (url.includes("setprime") || url.includes("stplay.cfd"))
+  if (u.includes("setprime") || u.includes("stplay.cfd"))
     return "SetPrime";
-  if (url.includes("setplay"))
+  if (u.includes("setplay"))
     return "SetPlay";
-  if (url.includes("vidmoly"))
+  if (u.includes("vidmoly"))
     return "VidMoly";
   return "Player";
 }
+function looksLikeHls(url) {
+  return /\.(m3u8|m3u)(\?|#|$)/i.test(url) || /\/hls\//i.test(url);
+}
+function withType(stream) {
+  if (looksLikeHls(stream.url))
+    stream.type = "hls";
+  return stream;
+}
 function getNonce() {
-  return __async(this, arguments, function* (type = "video", referer = MAIN_URL) {
+  return __async(this, arguments, function* (kind = "search", referer = MAIN_URL) {
+    var _a, _b;
     try {
       const body = new URLSearchParams();
       body.append("action", "st_cache_refresh_nonces");
@@ -226,23 +279,21 @@ function getNonce() {
         },
         body: body.toString()
       });
-      if (data && data.success) {
-        return data.data.nonces[type] || "";
+      if ((data == null ? void 0 : data.success) && ((_b = (_a = data.data) == null ? void 0 : _a.nonces) == null ? void 0 : _b[kind])) {
+        return data.data.nonces[kind];
       }
     } catch (e) {
-      console.warn(`[${PROVIDER_NAME}] Nonce AJAX failed: ${e.message}`);
     }
     try {
       const html = yield fetchText(referer);
-      const match = html.match(new RegExp(`${type}\\s*:\\s*["']([^"']+)["']`));
-      return match ? match[1] : "";
+      const m = html.match(new RegExp(`${kind}s*:\\s*["']([^"']+)["']`));
+      return m ? m[1] : "";
     } catch (e) {
-      console.error(`[${PROVIDER_NAME}] Nonce fallback failed: ${e.message}`);
+      return "";
     }
-    return "";
   });
 }
-function searchContent(query, nonce) {
+function searchSetFilm(query, nonce) {
   return __async(this, null, function* () {
     const body = new URLSearchParams();
     body.append("action", "ajax_search");
@@ -290,13 +341,15 @@ function fetchVideoUrl(postId, playerName, partKey, nonce, referer) {
         },
         body: body.toString()
       });
-      let iframeUrl = (_a = data.data) == null ? void 0 : _a.url;
-      if (iframeUrl && !iframeUrl.includes("setplay") && partKey) {
+      let iframeUrl = ((_a = data.data) == null ? void 0 : _a.url) || "";
+      if (!iframeUrl)
+        return null;
+      if (!iframeUrl.includes("setplay") && partKey) {
         iframeUrl += (iframeUrl.includes("?") ? "&" : "?") + `partKey=${partKey}`;
       }
       return iframeUrl;
     } catch (e) {
-      console.error(`[${PROVIDER_NAME}] Video URL fetch failed: ${e.message}`);
+      console.warn(`[${PROVIDER_NAME}] get_video_url failed: ${e.message}`);
       return null;
     }
   });
@@ -305,66 +358,65 @@ function resolveFastPlay(url, referer) {
   return __async(this, null, function* () {
     try {
       const html = yield fetchText(url, { headers: { "Referer": referer } });
-      const streamUrlMatch = html.match(/const\s+streamUrl\s*=\s*['"]([^'"]+)['"]/) || html.match(/streamUrl\s*=\s*['"]([^'"]+)['"]/);
-      const streamTypeMatch = html.match(/const\s+streamType\s*=\s*['"]([^'"]+)['"]/) || html.match(/streamType\s*=\s*['"]([^'"]+)['"]/);
-      let streamUrl = streamUrlMatch ? streamUrlMatch[1] : "";
-      if (!streamUrl && html.includes("file : streamUrl")) {
-        const manifestMatch = html.match(/['"](\/manifests\/[^'"]+)['"]/);
-        if (manifestMatch)
-          streamUrl = manifestMatch[1];
+      const streamUrlMatch = html.match(/const\s+streamUrl\s*=\s*["']([^"']+)["']/) || html.match(/streamUrl\s*=\s*["']([^"']+)["']/);
+      let streamUrl = streamUrlMatch && streamUrlMatch[1] || "";
+      if (!streamUrl) {
+        const manifest = html.match(/["'](\/manifests\/[^"']+)["']/);
+        if (manifest)
+          streamUrl = "https://fastplay.mom" + manifest[1];
       }
       if (!streamUrl)
         return null;
-      let finalUrl = fixUrl(streamUrl, "https://fastplay.mom");
-      if (!/\.(m3u8|mp4|mkv)/i.test(finalUrl)) {
-        finalUrl += finalUrl.includes("#") ? "" : "#.m3u8";
+      let final = fixUrl(streamUrl, "https://fastplay.mom");
+      if (!looksLikeHls(final) && !/\.(mp4|mkv)(\?|#|$)/i.test(final)) {
+        final += final.includes("#") ? "" : "#.m3u8";
       }
-      return {
-        url: finalUrl,
+      return withType({
+        url: final,
         quality: "Auto",
         headers: { "Referer": url }
-      };
+      });
     } catch (e) {
-      console.error(`[FastPlay] Error: ${e.message}`);
+      console.warn(`[FastPlay] ${e.message}`);
       return null;
     }
   });
 }
 function resolveSetPrime(url, referer) {
   return __async(this, null, function* () {
+    var _a;
     try {
-      const cleanUrl = url.split("&partKey=")[0].split("?partKey=")[0];
-      const postUrl = cleanUrl.replace("embed?i=", "embed/get?i=");
+      const clean = url.split("&partKey=")[0].split("?partKey=")[0];
+      const postUrl = clean.replace("embed?i=", "embed/get?i=");
       const text = yield fetchText(postUrl, {
         method: "POST",
         headers: {
-          "Referer": cleanUrl,
-          "X-Requested-With": "XMLHttpRequest",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+          "Referer": clean,
+          "X-Requested-With": "XMLHttpRequest"
         }
       });
       let suffix = null;
       try {
         const json = JSON.parse(text);
-        if (json && json.Links && json.Links.length > 0) {
+        if ((_a = json == null ? void 0 : json.Links) == null ? void 0 : _a.length)
           suffix = json.Links[0];
-        }
       } catch (e) {
-        const linkMatch = text.match(/Links":\["([^"\]]+)"/);
-        if (linkMatch)
-          suffix = linkMatch[1];
+        const m = text.match(/Links":\["([^"\]]+)"/);
+        if (m)
+          suffix = m[1];
       }
-      if (suffix) {
-        return {
-          url: `https://setplay.site${suffix}`,
-          quality: "Auto",
-          headers: { "Referer": cleanUrl }
-        };
-      }
+      if (!suffix)
+        return null;
+      const out = `https://setplay.site${suffix}`;
+      return withType({
+        url: out,
+        quality: "Auto",
+        headers: { "Referer": clean }
+      });
     } catch (e) {
-      console.error(`[SetPrime] Error: ${e.message}`);
+      console.warn(`[SetPrime] ${e.message}`);
+      return null;
     }
-    return null;
   });
 }
 function resolveSetPlay(url, referer) {
@@ -372,75 +424,66 @@ function resolveSetPlay(url, referer) {
     try {
       const html = yield fetchText(url, {
         headers: {
-          "Referer": referer || "https://www.setfilmizle.uk/",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+          "Referer": referer || MAIN_URL + "/"
         }
       });
-      const firePlayerMatch = html.match(/FirePlayer\s*\(\s*[^,]+,\s*(\{[\s\S]+?\})\s*,\s*(?:true|false)\s*\)/);
-      if (firePlayerMatch) {
+      const fireMatch = html.match(/FirePlayer\s*\(\s*[^,]+,\s*(\{[\s\S]+?\})\s*,\s*(?:true|false)\s*\)/);
+      if (fireMatch) {
         try {
-          const data = JSON.parse(firePlayerMatch[1]);
+          const data = JSON.parse(fireMatch[1]);
           const videoUrl = data.videoUrl;
           const videoServer = data.videoServer || "1";
           if (videoUrl) {
-            const baseUrl = new URL(url).origin;
-            let m3uLink = `${baseUrl}${videoUrl.replace(/\\\//g, "/")}?s=${videoServer}`;
-            if (!/\.(m3u8|mp4|mkv)/i.test(m3uLink) && !m3uLink.includes("#")) {
-              m3uLink += "#.m3u8";
+            const base = new URL(url).origin;
+            let m3u = `${base}${videoUrl.replace(/\\\//g, "/")}?s=${videoServer}`;
+            if (!looksLikeHls(m3u) && !/\.(mp4|mkv)(\?|#|$)/i.test(m3u)) {
+              m3u += m3u.includes("#") ? "" : "#.m3u8";
             }
-            return {
-              url: m3uLink,
+            return withType({
+              url: m3u,
               quality: "Auto",
               headers: { "Referer": url }
-            };
+            });
           }
         } catch (e) {
-          console.error(`[SetPlay] JSON parse error: ${e.message}`);
+          console.warn(`[SetPlay] FirePlayer parse: ${e.message}`);
         }
       }
-      const sourcesMatch = html.match(new RegExp("sources\\s*:\\s*\\[(.+?)\\]", "s"));
-      if (sourcesMatch) {
-        const fileMatch = sourcesMatch[1].match(/file\s*:\s*["']([^"']+)["']/);
-        if (fileMatch) {
-          return {
-            url: fileMatch[1],
+      const srcMatch = html.match(new RegExp("sources\\s*:\\s*\\[(.+?)\\]", "s"));
+      if (srcMatch) {
+        const fileM = srcMatch[1].match(/file\s*:\s*["']([^"']+)["']/);
+        if (fileM) {
+          return withType({
+            url: fileM[1],
             quality: "Auto",
             headers: { "Referer": url }
-          };
+          });
         }
       }
-      const m3u8Match = html.match(/["'](https?:\/\/[^"']+\.(m3u8|mp4|mkv)[^"']*)["']/i);
-      if (m3u8Match) {
-        return {
-          url: m3u8Match[1],
+      const direct = html.match(/["'](https?:\/\/[^"']+\.(m3u8|mp4|mkv)[^"']*)["']/i);
+      if (direct) {
+        return withType({
+          url: direct[1],
           quality: "Auto",
           headers: { "Referer": url }
-        };
+        });
       }
       if (html.includes("player_base_url")) {
-        const manifestMatch = html.match(/["'](\/manifests\/[^"']+)["']/);
-        if (manifestMatch) {
-          const baseUrlMatch = html.match(/player_base_url\s*=\s*["']([^"']+)["']/);
-          const baseUrl = baseUrlMatch ? baseUrlMatch[1] : "https://setplay.shop/player";
-          return {
-            url: fixUrl(manifestMatch[1], baseUrl) + "#.m3u8",
+        const manM = html.match(/["'](\/manifests\/[^"']+)["']/);
+        if (manM) {
+          const baseM = html.match(/player_base_url\s*=\s*["']([^"']+)["']/);
+          const base = baseM ? baseM[1] : "https://setplay.shop/player";
+          return withType({
+            url: fixUrl(manM[1], base) + "#.m3u8",
             quality: "Auto",
             headers: { "Referer": url }
-          };
+          });
         }
       }
     } catch (e) {
-      console.error(`[SetPlay] Error: ${e.message}`);
+      console.warn(`[SetPlay] ${e.message}`);
     }
-    let finalUrl = url;
-    if (!/\.(m3u8|mp4|mkv)/i.test(finalUrl)) {
-      finalUrl += finalUrl.includes("#") ? "" : "#.mkv";
-    }
-    return {
-      url: finalUrl,
-      quality: "Auto",
-      headers: { "Referer": referer }
-    };
+    return null;
   });
 }
 function extractStreams(tmdbId, mediaType, season, episode) {
@@ -451,16 +494,16 @@ function extractStreams(tmdbId, mediaType, season, episode) {
       if (!trTitle && !origTitle)
         return [];
       const searchNonce = yield getNonce("search");
-      console.log(`[${PROVIDER_NAME}] Search Nonce: ${searchNonce}`);
-      let results = yield searchContent(trTitle, searchNonce);
+      console.log(`[${PROVIDER_NAME}] Search nonce: ${searchNonce}`);
+      let results = yield searchSetFilm(trTitle, searchNonce);
       if (!results.length && origTitle && origTitle !== trTitle) {
-        results = yield searchContent(origTitle, searchNonce);
+        results = yield searchSetFilm(origTitle, searchNonce);
       }
       if (!results.length && shortTitle) {
-        results = yield searchContent(shortTitle, searchNonce);
+        results = yield searchSetFilm(shortTitle, searchNonce);
       }
       const q = normalizeTitle(trTitle || origTitle);
-      const match = results.find((item) => normalizeTitle(item.title) === q) || results.find((item) => normalizeTitle(item.title).includes(q)) || results[0];
+      const match = results.find((r) => normalizeTitle(r.title) === q) || results.find((r) => normalizeTitle(r.title).includes(q)) || results[0];
       if (!match) {
         console.warn(`[${PROVIDER_NAME}] Content not found`);
         return [];
@@ -477,13 +520,13 @@ function extractStreams(tmdbId, mediaType, season, episode) {
           const sMatch = epTitle.match(/([0-9]+)\.?\s*(Sezon|Season)/i);
           const eMatch = epTitle.match(/([0-9]+)\.?\s*(Bölüm|Episode)/i);
           if (sMatch && eMatch) {
-            if (parseInt(sMatch[1]) == season && parseInt(eMatch[1]) == episode) {
+            if (parseInt(sMatch[1], 10) === season && parseInt(eMatch[1], 10) === episode) {
               episodeUrl = fixUrl(epHref, MAIN_URL);
             }
           }
         });
         if (!episodeUrl) {
-          console.warn(`[${PROVIDER_NAME}] Episode not found: S${season}E${episode}`);
+          console.warn(`[${PROVIDER_NAME}] Episode S${season}E${episode} not found`);
           return [];
         }
         contentUrl = episodeUrl;
@@ -492,73 +535,71 @@ function extractStreams(tmdbId, mediaType, season, episode) {
       const $ = import_cheerio_without_node_native2.default.load(pageHtml);
       const videoNonce = yield getNonce("video", contentUrl);
       const streams = [];
-      let playerElements = $("a[data-player-name]");
-      if (playerElements.length === 0) {
-        playerElements = $("nav.player a");
+      let playerEls = $("a[data-player-name]");
+      if (!playerEls.length) {
+        playerEls = $("nav.player a");
       }
-      console.log(`[${PROVIDER_NAME}] Found ${playerElements.length} player elements`);
-      const fetchPromises = [];
-      playerElements.each((_, el) => {
+      console.log(`[${PROVIDER_NAME}] Found ${playerEls.length} player elements`);
+      const work = [];
+      playerEls.each((_, el) => {
         const postId = $(el).attr("data-post-id");
         const playerName = $(el).attr("data-player-name") || $(el).find("b").text().trim() || $(el).text().trim();
-        const partKey = $(el).attr("data-part-key");
-        console.log(`[${PROVIDER_NAME}] Player: ${playerName} | ID: ${postId} | Key: ${partKey}`);
-        if (postId) {
-          fetchPromises.push((() => __async(this, null, function* () {
-            const iframeUrl = yield fetchVideoUrl(postId, playerName, partKey, videoNonce, contentUrl);
-            if (iframeUrl) {
-              const langLabel = toDisplayLanguage(partKey, $(el).text().trim());
-              const playerLabel = toDisplayPlayer(playerName, iframeUrl);
-              const title = `${playerLabel} | ${langLabel}`;
-              const displayName = `${PROVIDER_NAME} - ${langLabel}`;
-              let resolved = null;
-              const lowerIframe = iframeUrl.toLowerCase();
-              if (lowerIframe.includes("fastplay.mom")) {
-                resolved = yield resolveFastPlay(iframeUrl, contentUrl);
-              } else if (lowerIframe.includes("setprime") || lowerIframe.includes("stplay.cfd")) {
-                const primeUrl = iframeUrl.includes("partKey=") ? iframeUrl : `${iframeUrl}${iframeUrl.includes("?") ? "&" : "?"}partKey=${partKey || ""}`;
-                resolved = yield resolveSetPrime(primeUrl, contentUrl);
-              } else if (lowerIframe.includes("setplay")) {
-                resolved = yield resolveSetPlay(iframeUrl, contentUrl);
-              }
-              if (resolved) {
-                streams.push(__spreadValues({
-                  name: displayName,
-                  title
-                }, resolved));
-              } else {
-                let finalUrl = iframeUrl;
-                if (lowerIframe.includes("stplay.cfd") && !lowerIframe.includes("partkey=")) {
-                  finalUrl += `${finalUrl.includes("?") ? "&" : "?"}partKey=${partKey || ""}`;
-                }
-                const looksPlayable = /\.(m3u8|mp4|mkv)(\?|#|$)/i.test(finalUrl) || finalUrl.includes("/cdn/hls/") || finalUrl.includes("/manifests/");
-                if (looksPlayable) {
-                  if (!/\.(m3u8|mp4|mkv)/i.test(finalUrl) && (finalUrl.includes("/cdn/hls/") || finalUrl.includes("/manifests/"))) {
-                    finalUrl += finalUrl.includes("#") ? "" : "#.m3u8";
-                  }
-                  streams.push({
-                    name: displayName,
-                    title,
-                    url: finalUrl,
-                    quality: "Auto",
-                    headers: { "Referer": contentUrl }
-                  });
-                }
-              }
+        const partKey = $(el).attr("data-part-key") || "";
+        if (!postId || postId.startsWith("${") || postId === "postId")
+          return;
+        const rawText = $(el).text().trim();
+        const langLabel = detectLang(partKey, rawText);
+        const playerLabel = detectPlayer(playerName, "");
+        const title = `${playerLabel} | ${langLabel}`;
+        const displayName = `${PROVIDER_NAME} - ${langLabel}`;
+        work.push((() => __async(this, null, function* () {
+          const iframeUrl = yield fetchVideoUrl(postId, playerName, partKey, videoNonce, contentUrl);
+          if (!iframeUrl)
+            return;
+          const lower = iframeUrl.toLowerCase();
+          let resolved = null;
+          if (lower.includes("fastplay")) {
+            resolved = yield resolveFastPlay(iframeUrl, contentUrl);
+          } else if (lower.includes("setprime") || lower.includes("stplay.cfd")) {
+            const primeUrl = iframeUrl.includes("partKey=") ? iframeUrl : `${iframeUrl}${iframeUrl.includes("?") ? "&" : "?"}partKey=${partKey || ""}`;
+            resolved = yield resolveSetPrime(primeUrl, contentUrl);
+          } else if (lower.includes("setplay")) {
+            resolved = yield resolveSetPlay(iframeUrl, contentUrl);
+          }
+          if (resolved) {
+            streams.push(__spreadValues({ name: displayName, title }, resolved));
+            return;
+          }
+          let finalUrl = iframeUrl;
+          if (lower.includes("stplay.cfd") && !lower.includes("partkey=")) {
+            finalUrl += `${finalUrl.includes("?") ? "&" : "?"}partKey=${partKey || ""}`;
+          }
+          const playable = /\.(m3u8|mp4|mkv)(\?|#|$)/i.test(finalUrl) || /\/cdn\/hls\//i.test(finalUrl) || /\/manifests\//i.test(finalUrl);
+          if (playable) {
+            if (!looksLikeHls(finalUrl) && !/\.(mp4|mkv)(\?|#|$)/i.test(finalUrl)) {
+              finalUrl += finalUrl.includes("#") ? "" : "#.m3u8";
             }
-          }))());
-        }
+            streams.push(withType({
+              name: displayName,
+              title,
+              url: finalUrl,
+              quality: "Auto",
+              headers: { "Referer": contentUrl }
+            }));
+          }
+        }))());
       });
-      yield Promise.all(fetchPromises);
+      yield Promise.all(work);
       const dedup = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const stream of streams) {
-        const key = `${stream.url}|${stream.title}|${stream.name}`;
+      for (const s of streams) {
+        const key = `${s.url}|${s.title}|${s.name}`;
         if (seen.has(key))
           continue;
         seen.add(key);
-        dedup.push(stream);
+        dedup.push(s);
       }
+      console.log(`[${PROVIDER_NAME}] Returning ${dedup.length} streams`);
       return dedup;
     } catch (error) {
       console.error(`[${PROVIDER_NAME}] Extractor error: ${error.message}`);
