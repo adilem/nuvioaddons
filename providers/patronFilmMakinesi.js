@@ -1,6 +1,6 @@
 /**
- * patronFilmMakinesi - Built from src/patronFilmMakinesi/
- * Generated: 2026-05-02T18:31:24.879Z
+ * patronfilmmakinesi - Built from src/patronfilmmakinesi/
+ * Generated: 2026-05-04T13:22:36.097Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -67,14 +67,14 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 
-// src/patronFilmMakinesi/index.js
-var patronFilmMakinesi_exports = {};
-__export(patronFilmMakinesi_exports, {
+// src/patronfilmmakinesi/index.js
+var patronfilmmakinesi_exports = {};
+__export(patronfilmmakinesi_exports, {
   getStreams: () => getStreams
 });
-module.exports = __toCommonJS(patronFilmMakinesi_exports);
+module.exports = __toCommonJS(patronfilmmakinesi_exports);
 
-// src/patronFilmMakinesi/http.js
+// src/patronfilmmakinesi/http.js
 var cheerio = __toESM(require("cheerio-without-node-native"));
 var MAIN_URL = "https://filmmakinesi.to";
 var HEADERS = {
@@ -110,7 +110,7 @@ function fixUrl(url) {
   return MAIN_URL + "/" + url;
 }
 
-// src/patronFilmMakinesi/tmdb.js
+// src/patronfilmmakinesi/tmdb.js
 function getTmdbTitle(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
@@ -151,15 +151,18 @@ function getTmdbTitle(tmdbId, mediaType) {
   });
 }
 
-// src/patronFilmMakinesi/extractors/closeload.js
+// src/patronfilmmakinesi/extractors/closeload.js
 function decodeBase64Latin1(input) {
+  input = (input || "").replace(/\s/g, "");
+  while (input.length % 4 !== 0)
+    input += "=";
   try {
     if (typeof atob === "function") {
       return atob(input);
     }
     return Buffer.from(input, "base64").toString("latin1");
   } catch (e) {
-    return input;
+    return "";
   }
 }
 function rotN(str, shift) {
@@ -183,20 +186,20 @@ function decryptNative(html) {
     const moduloMatch = scriptContent.match(/(\d+)\s*%\s*\(i\s*\+\s*(\d+)\)/);
     const magicNum = (moduloMatch == null ? void 0 : moduloMatch[1]) ? Number(moduloMatch[1]) : 399756995;
     const magicOffset = (moduloMatch == null ? void 0 : moduloMatch[2]) ? Number(moduloMatch[2]) : 5;
-    const funcBodyMatch = scriptContent.match(
-      /function\s+dc_[a-zA-Z0-9_]+\s*\([^)]*\)\s*\{([\s\S]*?)return\s+unmix;/
-    );
-    const functionBody = (funcBodyMatch == null ? void 0 : funcBodyMatch[1]) || scriptContent;
+    const funcStartIdx = scriptContent.indexOf("function dc_");
+    const funcEndIdx = scriptContent.indexOf("function d1x()", funcStartIdx);
+    const functionBody = funcStartIdx !== -1 ? scriptContent.substring(funcStartIdx, funcEndIdx !== -1 ? funcEndIdx : scriptContent.length) : scriptContent;
     const rotShiftMatch = functionBody.match(/charCodeAt\(0\)\s*\+\s*(\d+)/);
     const rotShift = (rotShiftMatch == null ? void 0 : rotShiftMatch[1]) ? Number(rotShiftMatch[1]) : 13;
     const reverseIdx = functionBody.indexOf(".reverse()");
     const atobIdx = functionBody.indexOf("atob(");
-    const rotIdx = functionBody.search(/\.replace\(\s*\/\[a-zA-Z\]\/g/);
+    const rotIdx = functionBody.indexOf(".replace(");
     const operations = [
       { idx: reverseIdx, op: "reverse" },
       { idx: atobIdx, op: "atob" },
       { idx: rotIdx, op: "rot" }
-    ].filter((x) => x.idx !== -1).sort((a, b) => a.idx - b.idx);
+    ].filter((x) => x.idx !== -1 && x.idx !== void 0).sort((a, b) => a.idx - b.idx);
+    console.log("[CloseLoad] Operations order:", operations.map((o) => o.op).join(" -> "));
     let result = parts.join("");
     for (const { op } of operations) {
       if (op === "reverse")
@@ -211,8 +214,13 @@ function decryptNative(html) {
       const decryptedCode = (result.charCodeAt(i) - magicNum % (i + magicOffset) + 256) % 256;
       unmix += String.fromCharCode(decryptedCode);
     }
-    return unmix || null;
+    console.log("[CloseLoad] Decrypt result prefix:", unmix.substring(0, 120));
+    if (unmix && /^https?:\/\//i.test(unmix)) {
+      return unmix;
+    }
+    return null;
   } catch (e) {
+    console.error("[CloseLoad] decryptNative error:", e == null ? void 0 : e.message);
     return null;
   }
 }
@@ -226,7 +234,7 @@ function processSubtitles(html) {
     const blocks = tracksMatch[1].match(/\{[^}]*\}/g) || [];
     for (const block of blocks) {
       const file = (_b = (_a = block.match(/"file"\s*:\s*"([^"]+)"/)) == null ? void 0 : _a[1]) == null ? void 0 : _b.replace(/\\\//g, "/");
-      const label = ((_c = block.match(/"label"\s*:\s*"([^"]+)"/)) == null ? void 0 : _c[1]) || "Altyaz\u0131";
+      const label = ((_c = block.match(/"label"\s*:\s*"([^"]+)"/)) == null ? void 0 : _c[1]) || "Altyazi";
       if (file && /^https?:\/\//i.test(file)) {
         subtitles.push({ label, file });
       }
@@ -247,6 +255,7 @@ function extractCloseLoad(url, referer) {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
       };
+      console.log("[CloseLoad] Fetching URL:", url);
       const response = yield fetch(url, { headers });
       if (!response.ok) {
         console.warn(`[CloseLoad] HTTP ${response.status} \u2014 ${url}`);
@@ -259,10 +268,22 @@ function extractCloseLoad(url, referer) {
         videoUrl = ((_a = ldMatch == null ? void 0 : ldMatch[1]) == null ? void 0 : _a.replace(/\\\//g, "/")) || null;
       }
       if (!videoUrl) {
-        const direct = html.match(/file\s*:\s*["']([^"']+\.(?:m3u8|mp4)[^"']*)['"]/i) || html.match(/["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*)['"]/i) || html.match(/source\s*:\s*["']([^"']+)['"]/i);
-        videoUrl = (direct == null ? void 0 : direct[1]) || null;
+        const directPatterns = [
+          html.match(/file\s*:\s*["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*)["']/i),
+          html.match(/["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*)["']/i),
+          html.match(/sources\s*:\s*\[\s*\{\s*["']?file["']?\s*:\s*["']([^"']+)["']/i),
+          html.match(/player\.src\(["']([^"']+)["']\)/i),
+          html.match(/source\s*:\s*["'](https?:\/\/[^"']+)["']/i)
+        ];
+        for (const m of directPatterns) {
+          if (m == null ? void 0 : m[1]) {
+            videoUrl = m[1];
+            break;
+          }
+        }
       }
       if (videoUrl && /^https?:\/\//i.test(videoUrl)) {
+        console.log("[CloseLoad] Found video URL:", videoUrl.substring(0, 120));
         const subtitles = processSubtitles(html);
         return {
           url: videoUrl,
@@ -274,7 +295,7 @@ function extractCloseLoad(url, referer) {
           subtitles
         };
       }
-      console.warn("[CloseLoad] Video URL \xE7\u0131kar\u0131lamad\u0131:", url);
+      console.warn("[CloseLoad] Video URL cikarilamadi:", url);
       return null;
     } catch (err) {
       console.error("[CloseLoad] Hata:", (err == null ? void 0 : err.message) || err);
@@ -283,7 +304,7 @@ function extractCloseLoad(url, referer) {
   });
 }
 
-// src/patronFilmMakinesi/extractors/vidmoly.js
+// src/patronfilmmakinesi/extractors/vidmoly.js
 var cheerio2 = __toESM(require("cheerio-without-node-native"));
 function unpackJS(code) {
   try {
@@ -388,7 +409,7 @@ function extractVidMoly(url, referer) {
   });
 }
 
-// src/patronFilmMakinesi/extractors/sibnet.js
+// src/patronfilmmakinesi/extractors/sibnet.js
 function extractSibnet(url) {
   return __async(this, null, function* () {
     try {
@@ -434,7 +455,7 @@ function extractSibnet(url) {
   });
 }
 
-// src/patronFilmMakinesi/extractors/rapid.js
+// src/patronfilmmakinesi/extractors/rapid.js
 function extractRapid(url, referer) {
   return __async(this, null, function* () {
     try {
@@ -524,7 +545,7 @@ function extractRapid(url, referer) {
   });
 }
 
-// src/patronFilmMakinesi/extractor.js
+// src/patronfilmmakinesi/extractor.js
 var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
 function inferLanguage(label = "") {
   const value = (label || "").toLowerCase();
@@ -692,7 +713,7 @@ function extractStreams(tmdbId, mediaType) {
   });
 }
 
-// src/patronFilmMakinesi/index.js
+// src/patronfilmmakinesi/index.js
 function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
