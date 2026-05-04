@@ -1,6 +1,6 @@
 /**
  * patronFilmMakinesi - Built from src/patronFilmMakinesi/
- * Generated: 2026-05-04T14:33:21.104Z
+ * Generated: 2026-05-04T16:03:59.979Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -78,8 +78,18 @@ module.exports = __toCommonJS(patronFilmMakinesi_exports);
 var cheerio = __toESM(require("cheerio-without-node-native"));
 var MAIN_URL = "https://filmmakinesi.to";
 var HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Accept-Encoding": "gzip, deflate, br",
+  "DNT": "1",
+  "Connection": "keep-alive",
+  "Upgrade-Insecure-Requests": "1",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Cache-Control": "max-age=0"
 };
 function fetchText(_0) {
   return __async(this, arguments, function* (url, options = {}) {
@@ -635,14 +645,22 @@ function searchMovie(query) {
 }
 function extractFromMoviePage(movieUrl) {
   return __async(this, null, function* () {
-    const html = yield fetchText(movieUrl);
+    let html;
+    try {
+      html = yield fetchText(movieUrl);
+    } catch (e) {
+      console.error(`[PatronFilmMakinesi] Sayfa alinamadi: ${e.message}`);
+      return [];
+    }
     const $ = import_cheerio_without_node_native.default.load(html);
     const streams = [];
     const linkUrls = [];
-    const iframeSrc = $("iframe").attr("data-src") || $("iframe").attr("src");
-    if (iframeSrc && iframeSrc.trim() !== "") {
-      linkUrls.push({ url: fixUrl(iframeSrc.trim()), title: "Ana Sunucu" });
-    }
+    $("iframe").each((i, el) => {
+      const src = $(el).attr("data-src") || $(el).attr("src");
+      if (src && src.trim() !== "" && !src.includes("youtube")) {
+        linkUrls.push({ url: fixUrl(src.trim()), title: `Sunucu ${i + 1}` });
+      }
+    });
     $(".video-parts a[data-video_url]").each((i, el) => {
       const vUrl = $(el).attr("data-video_url");
       const title = $(el).text().trim() || `Sunucu ${i + 1}`;
@@ -650,8 +668,33 @@ function extractFromMoviePage(movieUrl) {
         linkUrls.push({ url: fixUrl(vUrl.trim()), title });
       }
     });
+    $("[data-video_url], [data-video-url]").each((i, el) => {
+      const vUrl = $(el).attr("data-video_url") || $(el).attr("data-video-url");
+      const title = $(el).text().trim() || $(el).attr("title") || `Sunucu ${i + 1}`;
+      if (vUrl && vUrl.trim() !== "" && vUrl.includes("http")) {
+        const exists = linkUrls.some((u) => u.url === fixUrl(vUrl.trim()));
+        if (!exists)
+          linkUrls.push({ url: fixUrl(vUrl.trim()), title });
+      }
+    });
+    if (linkUrls.length === 0) {
+      const pageText = html;
+      const embedRegex = /(https?:\/\/(?:closeload|rapid|vidmoly|sibnet)[^"'<\s]+)/gi;
+      const matches = [...pageText.matchAll(embedRegex)];
+      for (let i = 0; i < matches.length; i++) {
+        const found = matches[i][1];
+        if (!linkUrls.some((u) => u.url === found)) {
+          linkUrls.push({ url: found, title: `Sunucu ${i + 1}` });
+        }
+      }
+    }
+    console.log(`[PatronFilmMakinesi] Bulunan link sayisi: ${linkUrls.length}`);
+    for (const l of linkUrls)
+      console.log(`  - ${l.url.substring(0, 80)} (${l.title})`);
     for (let i = 0; i < linkUrls.length; i++) {
       const { url: embedUrl, title: label } = linkUrls[i];
+      if (!embedUrl || embedUrl.includes("youtube"))
+        continue;
       try {
         if (embedUrl.includes("closeload")) {
           const clRes = yield extractCloseLoad(embedUrl, movieUrl);
@@ -668,7 +711,7 @@ function extractFromMoviePage(movieUrl) {
             continue;
           }
         }
-        if (embedUrl.includes("rapid.")) {
+        if (embedUrl.includes("rapid")) {
           const rapidRes = yield extractRapid(embedUrl, movieUrl);
           if (rapidRes) {
             const meta = buildMeta("Rapid", label);
