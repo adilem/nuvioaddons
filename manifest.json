@@ -226,7 +226,7 @@
       "id": "patron-dizipal",
       "name": "patronDizipal",
       "description": "Dizipal tabanli film ve dizi saglayicisi. @patr0n tarafindan gelistirildi.",
-      "version": "3.0.0",
+      "version": "4.0.0",
       "author": "patr0n",
       "supportedTypes": [
         "movie",

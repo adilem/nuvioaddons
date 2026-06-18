@@ -1,6 +1,6 @@
 /**
  * patronDizipal - Built from src/patronDizipal/
- * Generated: 2026-06-18T21:40:15.669Z
+ * Generated: 2026-06-18T21:57:25.263Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -268,7 +268,11 @@ function resolveDizipal(url, activeUrl) {
       const encMatch = html.match(/<div[^>]*data-rm-k=["']true["'][^>]*>([\s\S]*?)<\/div>/i);
       if (encMatch && encMatch[1]) {
         console.log(`${PROVIDER_TAG2} \u015Eifreli veri bulundu, \xE7\xF6z\xFCl\xFCyor...`);
-        const decryptedUrl = decryptDizipalData(encMatch[1]);
+        const unescapeHtml = (str) => {
+          return str.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'");
+        };
+        const cleanStr = unescapeHtml(encMatch[1]);
+        const decryptedUrl = decryptDizipalData(cleanStr);
         if (decryptedUrl) {
           iframeUrl = decryptedUrl;
           console.log(`${PROVIDER_TAG2} \xC7\xF6z\xFClen Iframe: ${iframeUrl}`);
@@ -298,22 +302,35 @@ function resolveDizipal(url, activeUrl) {
       } catch (e) {
       }
       const vParamMatch = iframeUrl.match(/[?&]v=([a-f0-9A-F]+)/);
-      const urlVId = vParamMatch ? vParamMatch[1] : null;
-      const playerRes = yield fetchWithResponse(iframeUrl, {
-        headers: {
-          "Referer": url,
-          "Origin": domain
-        }
-      });
-      const playerHtml = yield playerRes.text();
-      const openPlayerMatch = playerHtml.match(/window\.openPlayer\s*\(\s*['"]([^'"]+)['"]/);
-      let playlistId = null;
-      if (openPlayerMatch && openPlayerMatch[1]) {
-        playlistId = openPlayerMatch[1];
-        console.log(`${PROVIDER_TAG2} openPlayer ID: ${playlistId}`);
-      } else if (urlVId) {
-        playlistId = urlVId;
+      let playlistId = vParamMatch ? vParamMatch[1] : null;
+      const directRe = /(https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)/i;
+      let directMatch = null;
+      if (playlistId) {
         console.log(`${PROVIDER_TAG2} URL'den ID al\u0131nd\u0131: ${playlistId}`);
+      } else {
+        try {
+          const playerRes = yield fetchWithResponse(iframeUrl, {
+            headers: { "Referer": url, "Origin": domain }
+          });
+          const playerHtml = yield playerRes.text();
+          const openPlayerMatch = playerHtml.match(/window\.openPlayer\s*\(\s*['"]([^'"]+)['"]/);
+          if (openPlayerMatch && openPlayerMatch[1]) {
+            playlistId = openPlayerMatch[1];
+            console.log(`${PROVIDER_TAG2} openPlayer ID: ${playlistId}`);
+          } else {
+            directMatch = playerHtml.match(directRe);
+            if (directMatch && directMatch[1]) {
+              console.log(`${PROVIDER_TAG2} Bulundu (Direct): ${directMatch[1]}`);
+              return {
+                url: directMatch[1],
+                quality: "Auto",
+                headers: { "Referer": iframeUrl }
+              };
+            }
+          }
+        } catch (e) {
+          console.log(`${PROVIDER_TAG2} Player sayfas\u0131 \xE7ekilemedi (CF olabilir): ${e.message}`);
+        }
       }
       if (playlistId) {
         const apiUrl = `${domain}/source2.php?v=${playlistId}`;
@@ -353,18 +370,12 @@ function resolveDizipal(url, activeUrl) {
           console.error(`${PROVIDER_TAG2} API iste\u011Fi ba\u015Far\u0131s\u0131z: ${e.message}`);
         }
       }
-      const directRe = /(https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)/i;
-      const directMatch = playerHtml.match(directRe);
-      if (directMatch && directMatch[1]) {
-        console.log(`${PROVIDER_TAG2} Bulundu (Direct): ${directMatch[1]}`);
-        return {
-          url: directMatch[1],
-          quality: "Auto",
-          headers: { "Referer": iframeUrl }
-        };
-      }
-      console.error(`${PROVIDER_TAG2} \u0130\xE7erik \xE7ekilemedi.`);
-      return null;
+      console.log(`${PROVIDER_TAG2} Iframe URL WebView arac\u0131l\u0131\u011F\u0131yla \xE7\xF6z\xFClmesi i\xE7in g\xF6nderiliyor...`);
+      return {
+        url: iframeUrl,
+        quality: "Auto",
+        headers: { "Referer": url }
+      };
     } catch (e) {
       console.error(`${PROVIDER_TAG2} resolveDizipal hatas\u0131: ${e.message}`);
       return null;
@@ -511,48 +522,22 @@ function getEpisodeUrl(seriesUrl, season, episode, activeUrl) {
   return __async(this, null, function* () {
     try {
       const html = yield fetchText(seriesUrl);
-      const epNumPattern = new RegExp(
-        `${season}[.\\s]*[Ss]ezon[\\s.]*${episode}[.\\s]*[Bb][o\xF6]l[u\xFC]m`,
-        "i"
-      );
-      const anchorPattern = /href="([^"]+\/bolum\/[^"]+)"[^>]*>([^<]*<[^>]+>[^<]*<[^>]+>[^<]*)*\s*<div class="ep-num">([^<]+)<\/div>/gi;
-      let anchorMatch;
-      while ((anchorMatch = anchorPattern.exec(html)) !== null) {
-        const href = anchorMatch[1];
-        const epNum = anchorMatch[3] || "";
-        if (epNumPattern.test(epNum)) {
-          const url = fixUrl(href, activeUrl);
-          console.log(`${PROVIDER_TAG3} B\xF6l\xFCm URL (ep-num match): ${url}`);
-          return url;
-        }
-      }
-      const slugPattern = new RegExp(
-        `href="([^"]+)-${season}-sezon-${episode}-bolum"`,
-        "i"
-      );
+      const epNumPattern = new RegExp(`${season}[.\\s]*[Ss]ezon[\\s.]*${episode}[.\\s]*[Bb][o\xF6]l[u\xFC]m`, "i");
+      const slugPattern = new RegExp(`href="([^"]+\\/bolum\\/[^"]+-${season}x${episode}[^"]*)"`, "i");
       const slugMatch = html.match(slugPattern);
       if (slugMatch) {
-        const url = fixUrl(slugMatch[1] + `-${season}-sezon-${episode}-bolum`, activeUrl);
+        const url = fixUrl(slugMatch[1], activeUrl);
         console.log(`${PROVIDER_TAG3} B\xF6l\xFCm URL (slug match): ${url}`);
         return url;
       }
-      const splitMarkers = [
-        'class="detail-episode-item',
-        "class='detail-episode-item",
-        'class="episode-item',
-        "class='episode-item",
-        "detail-episode-item-wrap"
-      ];
-      for (const marker of splitMarkers) {
-        const blocks = html.split(marker);
-        for (const block of blocks) {
+      const blocks = html.split('href="');
+      for (const block of blocks) {
+        if (block.includes("/bolum/")) {
           if (epNumPattern.test(block)) {
-            const hrefMatch = block.match(/href="([^"]+)"/);
-            if (hrefMatch) {
-              const url = fixUrl(hrefMatch[1], activeUrl);
-              console.log(`${PROVIDER_TAG3} B\xF6l\xFCm URL (block split - ${marker.substring(0, 20)}): ${url}`);
-              return url;
-            }
+            const href = block.split('"')[0];
+            const url = fixUrl(href, activeUrl);
+            console.log(`${PROVIDER_TAG3} B\xF6l\xFCm URL (block split match): ${url}`);
+            return url;
           }
         }
       }
