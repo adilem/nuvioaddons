@@ -1,13 +1,15 @@
 /**
  * patronDizipal - Built from src/patronDizipal/
- * Generated: 2026-04-29T13:28:27.454Z
+ * Generated: 2026-06-18T21:06:01.162Z
  */
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __propIsEnum = Object.prototype.propertyIsEnumerable;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -35,6 +37,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
@@ -80,6 +90,26 @@ function resolveMainUrl() {
   return __async(this, null, function* () {
     if (_resolvedUrl)
       return _resolvedUrl;
+    try {
+      const url = "https://raw.githubusercontent.com/patr0nq/veriler/refs/heads/main/siteurl.txt";
+      const res = yield fetch(url, { signal: AbortSignal.timeout(1e4) });
+      if (res.ok) {
+        const text = yield res.text();
+        for (const line of text.split("\n")) {
+          if (line.trim().startsWith("dizipal:")) {
+            let finalUrl = line.replace("dizipal:", "").trim();
+            if (finalUrl.endsWith("/")) {
+              finalUrl = finalUrl.slice(0, -1);
+            }
+            _resolvedUrl = finalUrl;
+            console.log(`[Dizipal] Aktif domain (Github): ${_resolvedUrl}`);
+            return _resolvedUrl;
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`[Dizipal] Github URL \xE7ekilemedi: ${e.message}`);
+    }
     for (const domain of KNOWN_DOMAINS) {
       try {
         const res = yield fetch(`${domain}/`, {
@@ -90,7 +120,7 @@ function resolveMainUrl() {
         if (res.ok || res.status === 302 || res.status === 301) {
           const finalUrl = new URL(res.url).origin;
           _resolvedUrl = finalUrl;
-          console.log(`[Dizipal] Aktif domain: ${finalUrl}`);
+          console.log(`[Dizipal] Aktif domain (Fallback): ${finalUrl}`);
           return finalUrl;
         }
       } catch (_) {
@@ -232,34 +262,118 @@ function getTmdbTitle(tmdbId, mediaType) {
 }
 
 // src/patronDizipal/extractor.js
+var import_crypto_js = __toESM(require("crypto-js"));
 var PROVIDER_TAG2 = "[Dizipal]";
+var PASSPHRASE = "3hPn4uCjTVtfYWcjIcoJQ4cL1WWk1qxXI39egLYOmNv6IblA7eKJz68uU3eLzux1biZLCms0quEjTYniGv5z1JcKbNIsDQFSeIZOBZJz4is6pD7UyWDggWWzTLBQbHcQFpBQdClnuQaMNUHtLHTpzCvZy33p6I7wFBvL4fnXBYH84aUIyWGTRvM2G5cfoNf4705tO2kv";
 function resolveDizipal(url, activeUrl) {
   return __async(this, null, function* () {
     try {
       const siteUrl = activeUrl || MAIN_URL;
       console.log(`${PROVIDER_TAG2} \xC7\xF6z\xFCmleniyor: ${url}`);
-      const response = yield fetchWithResponse(url);
+      const response = yield fetchWithResponse(url, {
+        headers: { "Referer": siteUrl }
+      });
       const html = yield response.text();
-      const setCookie = response.headers.get("set-cookie");
-      const cookies = setCookie ? setCookie.split(",").map((c) => c.split(";")[0]).join("; ") : "";
-      const configToken = extractConfigToken(html);
-      if (configToken) {
-        console.log(`${PROVIDER_TAG2} Config token bulundu: ${configToken.substring(0, 20)}...`);
-        const stream = yield resolveViaPlayerConfig(configToken, url, cookies, siteUrl);
-        if (stream)
-          return stream;
+      let iframeUrl = "";
+      const encMatch = html.match(/<div[^>]*data-rm-k=["']true["'][^>]*>([\s\S]*?)<\/div>/i);
+      if (encMatch && encMatch[1]) {
+        console.log(`${PROVIDER_TAG2} \u015Eifreli veri bulundu, \xE7\xF6z\xFCl\xFCyor...`);
+        const decryptedUrl = decryptDizipalData(encMatch[1]);
+        if (decryptedUrl) {
+          iframeUrl = decryptedUrl;
+          console.log(`${PROVIDER_TAG2} \xC7\xF6z\xFClen Iframe: ${iframeUrl}`);
+        } else {
+          console.log(`${PROVIDER_TAG2} \u015Eifre \xE7\xF6zme i\u015Flemi ba\u015Far\u0131s\u0131z oldu.`);
+        }
       }
-      const embedUrl = extractDirectEmbed(html);
-      if (embedUrl) {
-        console.log(`${PROVIDER_TAG2} Do\u011Frudan embed: ${embedUrl}`);
-        return yield resolveEmbed(embedUrl, url);
+      if (!iframeUrl) {
+        console.log(`${PROVIDER_TAG2} Fallback iframe aran\u0131yor...`);
+        const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+        if (iframeMatch && iframeMatch[1]) {
+          iframeUrl = iframeMatch[1];
+          console.log(`${PROVIDER_TAG2} Fallback Iframe bulundu: ${iframeUrl}`);
+        }
       }
-      const directM3u8 = extractM3u8FromPage(html);
-      if (directM3u8) {
-        console.log(`${PROVIDER_TAG2} Sayfa i\xE7i m3u8: ${directM3u8}`);
-        return { url: directM3u8, quality: "Auto", headers: { "Referer": url } };
+      if (!iframeUrl) {
+        console.error(`${PROVIDER_TAG2} Hi\xE7 iframe bulunamad\u0131.`);
+        return null;
       }
-      console.error(`${PROVIDER_TAG2} Hi\xE7bir y\xF6ntem \xE7al\u0131\u015Fmad\u0131: ${url}`);
+      if (iframeUrl.startsWith("//")) {
+        iframeUrl = `https:${iframeUrl}`;
+      }
+      console.log(`${PROVIDER_TAG2} Player URL taran\u0131yor: ${iframeUrl}`);
+      let domain = "https://dplayer82.site";
+      try {
+        domain = new URL(iframeUrl).origin;
+      } catch (e) {
+      }
+      const vParamMatch = iframeUrl.match(/[?&]v=([a-f0-9A-F]+)/);
+      const urlVId = vParamMatch ? vParamMatch[1] : null;
+      const playerRes = yield fetchWithResponse(iframeUrl, {
+        headers: {
+          "Referer": url,
+          "Origin": domain
+        }
+      });
+      const playerHtml = yield playerRes.text();
+      const openPlayerMatch = playerHtml.match(/window\.openPlayer\s*\(\s*['"]([^'"]+)['"]/);
+      let playlistId = null;
+      if (openPlayerMatch && openPlayerMatch[1]) {
+        playlistId = openPlayerMatch[1];
+        console.log(`${PROVIDER_TAG2} openPlayer ID: ${playlistId}`);
+      } else if (urlVId) {
+        playlistId = urlVId;
+        console.log(`${PROVIDER_TAG2} URL'den ID al\u0131nd\u0131: ${playlistId}`);
+      }
+      if (playlistId) {
+        const apiUrl = `${domain}/source2.php?v=${playlistId}`;
+        console.log(`${PROVIDER_TAG2} API sorgulan\u0131yor: ${apiUrl}`);
+        try {
+          const apiRes = yield fetchWithResponse(apiUrl, {
+            headers: __spreadProps(__spreadValues({}, HEADERS), {
+              "Origin": domain,
+              "Referer": iframeUrl,
+              "X-Requested-With": "XMLHttpRequest",
+              "Accept": "application/json, text/javascript, */*; q=0.01",
+              "Sec-Fetch-Mode": "cors",
+              "Sec-Fetch-Site": "same-origin",
+              "Sec-GPC": "1"
+            })
+          });
+          const apiText = yield apiRes.text();
+          const fileMatch = apiText.match(/"file"\s*:\s*"([^"]+)"/);
+          if (fileMatch && fileMatch[1]) {
+            let fileUrl = fileMatch[1].replace(/\\\//g, "/");
+            if (fileUrl.startsWith("//")) {
+              fileUrl = `https:${fileUrl}`;
+            } else if (!fileUrl.startsWith("http")) {
+              fileUrl = `https://${fileUrl}`;
+            }
+            if (fileUrl.includes("m.php")) {
+              fileUrl = fileUrl.replace("m.php", "master.m3u8");
+            }
+            console.log(`${PROVIDER_TAG2} Bulundu (API): ${fileUrl}`);
+            return {
+              url: fileUrl,
+              quality: "Auto",
+              headers: { "Referer": iframeUrl }
+            };
+          }
+        } catch (e) {
+          console.error(`${PROVIDER_TAG2} API iste\u011Fi ba\u015Far\u0131s\u0131z: ${e.message}`);
+        }
+      }
+      const directRe = /(https?:\/\/[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)/i;
+      const directMatch = playerHtml.match(directRe);
+      if (directMatch && directMatch[1]) {
+        console.log(`${PROVIDER_TAG2} Bulundu (Direct): ${directMatch[1]}`);
+        return {
+          url: directMatch[1],
+          quality: "Auto",
+          headers: { "Referer": iframeUrl }
+        };
+      }
+      console.error(`${PROVIDER_TAG2} \u0130\xE7erik \xE7ekilemedi.`);
       return null;
     } catch (e) {
       console.error(`${PROVIDER_TAG2} resolveDizipal hatas\u0131: ${e.message}`);
@@ -267,146 +381,47 @@ function resolveDizipal(url, activeUrl) {
     }
   });
 }
-function extractConfigToken(html) {
-  const patterns = [
-    /id="videoContainer"[^>]+data-cfg="([^"]+)"/,
-    /data-cfg="([^"]+)"/,
-    /data-hash="([^"]+)"/,
-    /data-token="([^"]+)"/,
-    /data-key="([^"]+)"/,
-    /playerConfig\s*=\s*["']([^"']+)["']/,
-    /cfg\s*:\s*["']([^"']+)["']/
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match)
-      return match[1];
-  }
-  return null;
-}
-function extractDirectEmbed(html) {
-  const patterns = [
-    /iframe[^>]+src="([^"]*(?:embed|player|watch)[^"]+)"/i,
-    /data-frame="([^"]+)"/i,
-    /<iframe[^>]+src="([^"]+)"/i
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match && !match[1].includes("youtube") && !match[1].includes("google")) {
-      return fixUrl(match[1]);
-    }
-  }
-  return null;
-}
-function extractM3u8FromPage(html) {
-  const match = html.match(/["']([^"']*\.m3u8[^"']*)["']/);
-  return match ? match[1] : null;
-}
-function resolveViaPlayerConfig(configToken, refererUrl, cookies, siteUrl) {
-  return __async(this, null, function* () {
-    var _a, _b, _c;
-    try {
-      const baseUrl = siteUrl || MAIN_URL;
-      const configRes = yield fetch(`${baseUrl}/ajax-player-config`, {
-        method: "POST",
-        headers: __spreadValues(__spreadProps(__spreadValues({}, HEADERS), {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "X-Requested-With": "XMLHttpRequest",
-          "Origin": baseUrl,
-          "Referer": refererUrl
-        }), cookies ? { "Cookie": cookies } : {}),
-        body: `cfg=${encodeURIComponent(configToken)}`
-      });
-      if (!configRes.ok) {
-        console.warn(`${PROVIDER_TAG2} ajax-player-config yan\u0131t\u0131: ${configRes.status}`);
-        return null;
-      }
-      const configText = yield configRes.text();
-      let configJson;
-      try {
-        configJson = JSON.parse(configText);
-      } catch (e) {
-        console.error(`${PROVIDER_TAG2} Config JSON parse hatas\u0131: ${e.message}`);
-        return null;
-      }
-      const rawUrl = ((_a = configJson == null ? void 0 : configJson.config) == null ? void 0 : _a.v) || ((_b = configJson == null ? void 0 : configJson.config) == null ? void 0 : _b.url) || (configJson == null ? void 0 : configJson.url) || ((_c = configJson == null ? void 0 : configJson.data) == null ? void 0 : _c.url) || null;
-      if (!rawUrl) {
-        console.error(`${PROVIDER_TAG2} Config JSON'da URL bulunamad\u0131. Yan\u0131t: ${configText.substring(0, 200)}`);
-        return null;
-      }
-      const embedUrl = fixUrl(rawUrl.replace(/\\\//g, "/"));
-      console.log(`${PROVIDER_TAG2} Embed URL: ${embedUrl}`);
-      return yield resolveEmbed(embedUrl, refererUrl);
-    } catch (e) {
-      console.error(`${PROVIDER_TAG2} resolveViaPlayerConfig hatas\u0131: ${e.message}`);
+function decryptDizipalData(rawJsonStr) {
+  try {
+    const ctMatch = rawJsonStr.match(/"ciphertext"\s*:\s*"([^"]+)"/);
+    const ivMatch = rawJsonStr.match(/"iv"\s*:\s*"([^"]+)"/);
+    const saltMatch = rawJsonStr.match(/"salt"\s*:\s*"([^"]+)"/);
+    if (!ctMatch || !ivMatch || !saltMatch) {
+      console.log(`${PROVIDER_TAG2} Eksik AES verisi`);
       return null;
     }
-  });
-}
-function resolveEmbed(embedUrl, refererUrl) {
-  return __async(this, null, function* () {
-    if (embedUrl.includes("imagestoo")) {
-      return yield resolveImagestoo(embedUrl);
-    }
-    return yield resolveStandard(embedUrl, refererUrl);
-  });
-}
-function resolveImagestoo(embedUrl) {
-  return __async(this, null, function* () {
-    var _a;
-    console.log(`${PROVIDER_TAG2} Imagestoo \xE7\xF6z\xFCmleniyor: ${embedUrl}`);
-    const videoId = embedUrl.split("/").filter(Boolean).pop();
-    const apiUrl = `https://imagestoo.com/player/index.php?data=${videoId}&do=getVideo`;
-    const response = yield fetch(apiUrl, {
-      method: "POST",
-      headers: __spreadProps(__spreadValues({}, HEADERS), {
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": embedUrl
-      })
+    const ctB64 = ctMatch[1].replace(/\\\//g, "/").replace(/\\n/g, "").replace(/\\/g, "");
+    const ivHex = ivMatch[1].replace(/\\\//g, "/").replace(/\\n/g, "").replace(/\\/g, "");
+    const saltHex = saltMatch[1].replace(/\\\//g, "/").replace(/\\n/g, "").replace(/\\/g, "");
+    const salt = import_crypto_js.default.enc.Hex.parse(saltHex);
+    const iv = import_crypto_js.default.enc.Hex.parse(ivHex);
+    const key = import_crypto_js.default.PBKDF2(PASSPHRASE, salt, {
+      keySize: 256 / 32,
+      iterations: 999,
+      hasher: import_crypto_js.default.algo.SHA512
     });
-    if (!response.ok) {
-      throw new Error(`Imagestoo API hatas\u0131: ${response.status}`);
-    }
-    const setCookie = response.headers.get("set-cookie");
-    const sessionCookie = setCookie ? ((_a = setCookie.split(",").find((c) => c.includes("fireplayer_player"))) == null ? void 0 : _a.split(";")[0]) || "" : "";
-    const data = yield response.json();
-    const securedLink = data.securedLink ? data.securedLink.replace(/\\\//g, "/") : null;
-    if (securedLink) {
-      return {
-        url: fixUrl(securedLink),
-        quality: "Auto",
-        headers: __spreadValues({
-          "Referer": embedUrl
-        }, sessionCookie ? { "Cookie": sessionCookie } : {})
-      };
-    }
-    return null;
-  });
-}
-function resolveStandard(embedUrl, referer) {
-  return __async(this, null, function* () {
-    console.log(`${PROVIDER_TAG2} Standart embed \xE7\xF6z\xFCmleniyor: ${embedUrl}`);
-    const html = yield fetchText(embedUrl, {
-      headers: { "Referer": referer }
+    const decrypted = import_crypto_js.default.AES.decrypt(ctB64, key, {
+      iv,
+      mode: import_crypto_js.default.mode.CBC,
+      padding: import_crypto_js.default.pad.Pkcs7
     });
-    const m3u8Match = html.match(/sources\s*:\s*\[\s*\{\s*file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || html.match(/file\s*:\s*["']([^"']+\.m3u8[^"']*)["']/i) || html.match(/["']([^"']*\.m3u8[^"']*)["']/i);
-    if (m3u8Match) {
-      return {
-        url: m3u8Match[1],
-        quality: "Auto",
-        headers: { "Referer": embedUrl }
-      };
+    let finalUrl = decrypted.toString(import_crypto_js.default.enc.Utf8);
+    if (!finalUrl) {
+      return null;
     }
-    const mp4Match = html.match(/["']([^"']*\.mp4[^"']*)["']/i);
-    if (mp4Match) {
-      return {
-        url: mp4Match[1],
-        quality: "Auto",
-        headers: { "Referer": embedUrl }
-      };
+    finalUrl = finalUrl.replace(/\\\//g, "/");
+    if (finalUrl.startsWith("://")) {
+      finalUrl = `https${finalUrl}`;
+    } else if (finalUrl.startsWith("//")) {
+      finalUrl = `https:${finalUrl}`;
+    } else if (!finalUrl.startsWith("http")) {
+      finalUrl = `https://${finalUrl}`;
     }
+    return finalUrl;
+  } catch (e) {
+    console.error(`${PROVIDER_TAG2} \u015Eifre \xE7\xF6zme hatas\u0131: ${e.message}`);
     return null;
-  });
+  }
 }
 
 // src/patronDizipal/index.js
