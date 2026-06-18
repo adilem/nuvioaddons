@@ -1,6 +1,6 @@
 /**
  * patronDizipal - Built from src/patronDizipal/
- * Generated: 2026-06-18T21:57:25.263Z
+ * Generated: 2026-06-18T22:41:25.378Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -522,8 +522,20 @@ function getEpisodeUrl(seriesUrl, season, episode, activeUrl) {
   return __async(this, null, function* () {
     try {
       const html = yield fetchText(seriesUrl);
-      const epNumPattern = new RegExp(`${season}[.\\s]*[Ss]ezon[\\s.]*${episode}[.\\s]*[Bb][o\xF6]l[u\xFC]m`, "i");
-      const slugPattern = new RegExp(`href="([^"]+\\/bolum\\/[^"]+-${season}x${episode}[^"]*)"`, "i");
+      const epNumPattern1 = new RegExp(`\\b${season}[.\\s]*[Ss]ezon[\\s.]*${episode}[.\\s]*[Bb][o\xF6]l[u\xFC]m\\b`, "i");
+      const epNumPattern2 = new RegExp(`\\b${season}x${episode}\\b`, "i");
+      const epBlockRegex = /<a[^>]+data-dizipal-pageloader[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/ig;
+      let m;
+      while ((m = epBlockRegex.exec(html)) !== null) {
+        const href = m[1];
+        const content = m[2];
+        if (epNumPattern1.test(content) || epNumPattern2.test(content) || epNumPattern1.test(href) || epNumPattern2.test(href)) {
+          const url = fixUrl(href, activeUrl);
+          console.log(`${PROVIDER_TAG3} B\xF6l\xFCm URL (DOM match): ${url}`);
+          return url;
+        }
+      }
+      const slugPattern = new RegExp(`href=["']([^"']+\\/bolum\\/[^"']*-?${season}x${episode}[^"']*)["']`, "i");
       const slugMatch = html.match(slugPattern);
       if (slugMatch) {
         const url = fixUrl(slugMatch[1], activeUrl);
@@ -533,7 +545,7 @@ function getEpisodeUrl(seriesUrl, season, episode, activeUrl) {
       const blocks = html.split('href="');
       for (const block of blocks) {
         if (block.includes("/bolum/")) {
-          if (epNumPattern.test(block)) {
+          if (epNumPattern1.test(block) || epNumPattern2.test(block)) {
             const href = block.split('"')[0];
             const url = fixUrl(href, activeUrl);
             console.log(`${PROVIDER_TAG3} B\xF6l\xFCm URL (block split match): ${url}`);
@@ -543,13 +555,16 @@ function getEpisodeUrl(seriesUrl, season, episode, activeUrl) {
       }
       const seriesSlug = seriesUrl.split("/").filter(Boolean).pop();
       if (seriesSlug) {
-        const guessUrl = `${activeUrl}/bolum/${seriesSlug}-${season}-sezon-${episode}-bolum`;
-        console.log(`${PROVIDER_TAG3} URL tahmini: ${guessUrl}`);
-        try {
-          const testRes = yield fetch(guessUrl, { method: "HEAD", headers: HEADERS });
-          if (testRes.ok)
-            return guessUrl;
-        } catch (_) {
+        const guessUrl1 = `${activeUrl}/bolum/${seriesSlug}-${season}-sezon-${episode}-bolum`;
+        const guessUrl2 = `${activeUrl}/bolum/${seriesSlug}-${season}x${episode}`;
+        for (const gUrl of [guessUrl1, guessUrl2]) {
+          console.log(`${PROVIDER_TAG3} URL tahmini: ${gUrl}`);
+          try {
+            const testRes = yield fetch(gUrl, { method: "HEAD", headers: HEADERS });
+            if (testRes.ok)
+              return gUrl;
+          } catch (_) {
+          }
         }
       }
       console.warn(`${PROVIDER_TAG3} B\xF6l\xFCm URL bulunamad\u0131: S${season}E${episode}`);
