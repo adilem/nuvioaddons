@@ -1,6 +1,6 @@
 /**
  * patronSinemacx - Built from src/patronSinemacx/
- * Generated: 2026-06-18T23:03:46.093Z
+ * Generated: 2026-06-18T23:04:13.147Z
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -168,8 +168,8 @@ function resolveSinemacx(movieUrl) {
           sUrl += "#sub.vtt";
         }
         subtitles.push({
-          language: lang,
-          url: sUrl
+          label: lang,
+          file: sUrl
         });
         console.log(`${PROVIDER_TAG} Altyaz\u0131 bulundu: [${lang}] ${sUrl}`);
       }
