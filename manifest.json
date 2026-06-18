@@ -296,6 +296,29 @@
       "limited": false,
       "disabledPlatforms": [],
       "supportsExternalPlayer": true
+    },
+	{
+      "id": "patron-diziyou",
+      "name": "patronDiziyou",
+      "description": "Diziyou tabanli dizi saglayicisi. @patr0n tarafindan gelistirildi.",
+      "version": "1.0.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/patronDiziyou.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=diziyou.one&sz=64",
+      "contentLanguage": [
+        "tr"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
     }
   ]
 }
