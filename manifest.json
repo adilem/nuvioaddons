@@ -126,7 +126,7 @@
       "id": "patron-dort-khd",
       "name": "PatronDortKHD",
       "description": "4KHDHub tabanli film ve dizi stream linkleri. @patr0n tarafindan gelistirildi.",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "author": "patr0n",
       "supportedTypes": [
         "movie",

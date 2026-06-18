@@ -1,6 +1,6 @@
 /**
  * patrondortkhd - Built from src/patrondortkhd/
- * Generated: 2026-05-02T17:00:14.024Z
+ * Generated: 2026-06-18T21:21:12.656Z
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -79,7 +79,7 @@ var import_cheerio_without_node_native2 = __toESM(require("cheerio-without-node-
 
 // src/patrondortkhd/http.js
 var DOMAINS_URL = "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json";
-var DEFAULT_MAIN_URL = "https://4khdhub.click";
+var DEFAULT_MAIN_URL = "https://4khdhub.one";
 var HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
