@@ -1,4 +1,7 @@
-
+/**
+ * patronDiziyou - Built from src/patronDiziyou/
+ * Generated: 2026-06-18T22:06:59.939Z
+ */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -294,11 +297,18 @@ function getStreams(tmdbId, type, season, episode) {
       let matchUrl = null;
       for (const query of queries) {
         console.log(`${PROVIDER_TAG} Aran\u0131yor: "${query}"`);
-        const searchUrl = `${baseUrl}/?s=${encodeURIComponent(query)}`;
-        const html = yield fetchText(searchUrl);
+        const searchUrl = `${baseUrl}/wp-admin/admin-ajax.php`;
+        const html = yield fetchText(searchUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: `action=data_fetch&keyword=${encodeURIComponent(query)}`
+        });
         if (!html)
           continue;
-        const itemRegex = /<div class=["']single-item["'][^>]*>[\s\S]*?<div id=["']categorytitle["'][^>]*>\s*<a href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/ig;
+        const itemRegex = /<div id=["']searchelement["'][^>]*>[\s\S]*?<div class=["']search-cat-img["']>[\s\S]*?<\/div>\s*<a href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/ig;
         let m;
         while ((m = itemRegex.exec(html)) !== null) {
           const href = m[1];
