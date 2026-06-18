@@ -1,6 +1,6 @@
 /**
  * patronSinemacx - Built from src/patronSinemacx/
- * Generated: 2026-06-18T22:50:03.461Z
+ * Generated: 2026-06-18T23:03:46.093Z
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -175,9 +175,6 @@ function resolveSinemacx(movieUrl) {
       }
     }
     let sourceName = "Sinemacx";
-    if (subtitles.length > 0) {
-      sourceName = `Sinemacx|sub=${subtitles[0].url}`;
-    }
     if (iframeUrl.toLowerCase().includes("player.filmizle.in")) {
       const domainMatch = iframeUrl.match(/https?:\/\/([^\/]+)/);
       if (domainMatch) {
