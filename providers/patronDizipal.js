@@ -1,7 +1,4 @@
-/**
- * patronDizipal - Built from src/patronDizipal/
- * Generated: 2026-06-18T21:06:01.162Z
- */
+
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
