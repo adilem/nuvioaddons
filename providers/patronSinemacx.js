@@ -1,6 +1,6 @@
 /**
  * patronSinemacx - Built from src/patronSinemacx/
- * Generated: 2026-06-18T22:25:42.138Z
+ * Generated: 2026-06-18T22:50:03.461Z
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -174,6 +174,10 @@ function resolveSinemacx(movieUrl) {
         console.log(`${PROVIDER_TAG} Altyaz\u0131 bulundu: [${lang}] ${sUrl}`);
       }
     }
+    let sourceName = "Sinemacx";
+    if (subtitles.length > 0) {
+      sourceName = `Sinemacx|sub=${subtitles[0].url}`;
+    }
     if (iframeUrl.toLowerCase().includes("player.filmizle.in")) {
       const domainMatch = iframeUrl.match(/https?:\/\/([^\/]+)/);
       if (domainMatch) {
@@ -198,7 +202,7 @@ function resolveSinemacx(movieUrl) {
               streams.push({
                 url: jsonRes.securedLink,
                 quality: "Auto",
-                name: "Sinemacx",
+                name: sourceName,
                 headers: { "Referer": iframeUrl },
                 subtitles: subtitles.length > 0 ? subtitles : void 0
               });
@@ -218,7 +222,7 @@ function resolveSinemacx(movieUrl) {
         streams.push({
           url: iframeUrl,
           quality: "Auto",
-          name: "Sinemacx",
+          name: sourceName,
           headers: { "Referer": movieUrl },
           subtitles: subtitles.length > 0 ? subtitles : void 0
         });
@@ -322,8 +326,8 @@ function getTmdbTitle(tmdbId, mediaType) {
 function getStreams(tmdbId, type, season, episode) {
   return __async(this, null, function* () {
     console.log(`${PROVIDER_TAG} getStreams: ${type} | TMDB: ${tmdbId} | S${season}E${episode}`);
-    if (type !== "movie") {
-      console.log(`${PROVIDER_TAG} Sadece film aramalar\u0131 desteklenmektedir.`);
+    if (type !== "movie" && type !== "tv") {
+      console.log(`${PROVIDER_TAG} Sadece film ve dizi aramalar\u0131 desteklenmektedir.`);
       return [];
     }
     try {
@@ -355,7 +359,6 @@ function getStreams(tmdbId, type, season, episode) {
           const cleanTr = normalize(trTitle);
           const cleanOrig = normalize(origTitle);
           const cleanQ = normalize(query);
-          console.log(`[DEBUG] Check: "${titleStr}" -> tr:${cleanTr}, q:${cleanQ}`);
           const titleMatches = rTitle === cleanTr || rTitle === cleanOrig || rTitle === cleanQ || rTitle === cleanTr + "1" || rTitle === cleanOrig + "1" || rTitle === cleanQ + "1";
           const yearMatches = !year || href.includes(year) || titleStr.includes(year);
           const partialMatch = rTitle.includes(cleanQ) || cleanQ.includes(rTitle);

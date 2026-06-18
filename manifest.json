@@ -330,7 +330,8 @@
       "version": "1.0.0",
       "author": "patr0n",
       "supportedTypes": [
-        "movie"
+        "movie",
+        "tv"
       ],
       "filename": "providers/patronSinemacx.js",
       "enabled": true,
