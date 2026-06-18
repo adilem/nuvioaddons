@@ -1,6 +1,6 @@
 /**
  * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-04-29T15:12:10.836Z
+ * Generated: 2026-06-18T20:59:20.995Z
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -69,7 +69,7 @@ __export(patronFilmEkseni_exports, {
 module.exports = __toCommonJS(patronFilmEkseni_exports);
 
 // src/patronFilmEkseni/http.js
-var MAIN_URL = "https://filmekseni.cc";
+var MAIN_URL = "https://filmekseni.top";
 var HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0",
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

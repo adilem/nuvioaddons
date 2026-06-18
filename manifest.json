@@ -276,7 +276,7 @@
       "id": "patron-film-ekseni",
       "name": "patronFilmEkseni",
       "description": "FilmEkseni.cc tabanli film saglayicisi. @patr0n tarafindan gelistirildi.",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "author": "patr0n",
       "supportedTypes": [
         "movie"
