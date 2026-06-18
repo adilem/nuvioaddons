@@ -226,7 +226,7 @@
       "id": "patron-dizipal",
       "name": "patronDizipal",
       "description": "Dizipal tabanli film ve dizi saglayicisi. @patr0n tarafindan gelistirildi.",
-      "version": "2.0.0",
+      "version": "3.0.0",
       "author": "patr0n",
       "supportedTypes": [
         "movie",
@@ -297,7 +297,7 @@
       "disabledPlatforms": [],
       "supportsExternalPlayer": true
     },
-	{
+    {
       "id": "patron-diziyou",
       "name": "patronDiziyou",
       "description": "Diziyou tabanli dizi saglayicisi. @patr0n tarafindan gelistirildi.",

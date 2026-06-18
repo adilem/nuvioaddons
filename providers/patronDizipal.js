@@ -1,4 +1,7 @@
-
+/**
+ * patronDizipal - Built from src/patronDizipal/
+ * Generated: 2026-06-18T21:40:15.669Z
+ */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -155,16 +158,6 @@ function fetchText(_0) {
   return __async(this, arguments, function* (url, options = {}) {
     const res = yield fetchWithResponse(url, options);
     return yield res.text();
-  });
-}
-function fetchJSON(_0) {
-  return __async(this, arguments, function* (url, options = {}) {
-    const text = yield fetchText(url, options);
-    try {
-      return JSON.parse(text.replace(/^\ufeff/, ""));
-    } catch (e) {
-      throw new Error(`JSON parse hatas\u0131: ${e.message}`);
-    }
   });
 }
 
@@ -438,31 +431,48 @@ function getStreams(tmdbId, type, season, episode) {
       const matchType = type === "movie" ? "Film" : "Dizi";
       const queries = [...new Set([trTitle, origTitle, shortTitle].filter((q) => q && q.length > 1))];
       let match = null;
+      const mainHtml = yield fetchText(`${activeUrl}/`);
+      const cKeyMatch = mainHtml.match(/name=["']cKey["'][^>]*value=["']([^"']+)["']/i);
+      const cValueMatch = mainHtml.match(/name=["']cValue["'][^>]*value=["']([^"']+)["']/i);
+      const cKey = cKeyMatch ? cKeyMatch[1] : "";
+      const cValue = cValueMatch ? cValueMatch[1] : "";
       for (const query of queries) {
         console.log(`${PROVIDER_TAG3} Aran\u0131yor: "${query}"`);
-        const searchUrl = `${activeUrl}/ajax-search?q=${encodeURIComponent(query)}`;
+        const searchUrl = `${activeUrl}/bg/searchcontent`;
         try {
-          const results = yield fetchJSON(searchUrl, {
+          const searchRes = yield fetch(searchUrl, {
+            method: "POST",
             headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
               "X-Requested-With": "XMLHttpRequest",
               "Referer": `${activeUrl}/`
-            }
+            },
+            body: `cKey=${encodeURIComponent(cKey)}&cValue=${encodeURIComponent(cValue)}&searchterm=${encodeURIComponent(query)}`
           });
-          if (!(results == null ? void 0 : results.success) || !Array.isArray(results.results))
+          if (!searchRes.ok)
             continue;
-          match = results.results.find((r) => {
-            if (r.type !== matchType)
-              return false;
+          const jsonResponse = yield searchRes.json();
+          const results = (jsonResponse == null ? void 0 : jsonResponse.data) || jsonResponse;
+          const htmlStr = (results == null ? void 0 : results.html) || "";
+          if (!htmlStr)
+            continue;
+          const itemRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>[\s\S]*?<span class="text-white">([^<]+)<\/span>/ig;
+          let m;
+          while ((m = itemRegex.exec(htmlStr)) !== null) {
+            const href = m[1];
+            const rTitleStr = m[2];
             const normalize = (str) => (str || "").toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, "");
-            const rTitle = normalize(r.title);
+            const rTitle = normalize(rTitleStr);
             const cleanTr = normalize(trTitle);
             const cleanOrig = normalize(origTitle);
             const cleanSh = normalize(shortTitle);
             const cleanQ = normalize(query);
             const titleMatches = rTitle === cleanTr || rTitle === cleanOrig || rTitle === cleanSh || rTitle === cleanQ || rTitle.includes(cleanQ) || cleanQ.includes(rTitle);
-            const yearMatches = !year || !r.year || Math.abs(year - r.year) <= 1;
-            return titleMatches && yearMatches;
-          });
+            if (titleMatches) {
+              match = { title: rTitleStr, url: href };
+              break;
+            }
+          }
           if (match) {
             console.log(`${PROVIDER_TAG3} E\u015Fle\u015Fme: "${match.title}" -> ${match.url}`);
             break;
