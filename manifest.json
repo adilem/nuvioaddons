@@ -84,7 +84,7 @@
         "movie"
       ],
       "filename": "providers/patron666Film.js",
-      "enabled": true,
+      "enabled": false,
       "logo": "https://www.google.com/s2/favicons?domain=666filmizle.site&sz=%size%",
       "contentLanguage": [
         "tr"
