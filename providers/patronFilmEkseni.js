@@ -1,7 +1,4 @@
-/**
- * patronFilmEkseni - Built from src/patronFilmEkseni/
- * Generated: 2026-06-18T20:59:20.995Z
- */
+
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
