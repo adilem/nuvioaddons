@@ -1,6 +1,5 @@
 /**
- * patronDiziyou - Built from src/patronDiziyou/
- * Generated: 2026-06-18T22:06:59.939Z
+ * patronDiziyou - Enhanced with Python Auto-Pilot Logic
  */
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -93,7 +92,7 @@ function getDiziyouBaseUrl() {
         }
       }
     } catch (e) {
-      console.error(`${PROVIDER_TAG} Github'dan domain \xE7ekilemedi: ${e.message}`);
+      console.error(`${PROVIDER_TAG} Github'dan domain çekilemedi: ${e.message}`);
     }
     console.log(`${PROVIDER_TAG} Aktif domain (Fallback): ${FALLBACK_URL}`);
     return FALLBACK_URL;
@@ -125,7 +124,7 @@ function fetchText(_0) {
       }
       return yield response.text();
     } catch (e) {
-      console.error(`${PROVIDER_TAG} fetchText hatas\u0131 (${url}): ${e.message}`);
+      console.error(`${PROVIDER_TAG} fetchText hatası (${url}): ${e.message}`);
       return "";
     }
   });
@@ -159,7 +158,7 @@ function getTmdbTitleFromHtml(tmdbId, mediaType) {
       } else {
         const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
         if (titleMatch) {
-          trTitle = decodeHtml(titleMatch[1]).split("(")[0].split("\u2014")[0].trim();
+          trTitle = decodeHtml(titleMatch[1]).split("(")[0].split("—")[0].trim();
         }
       }
       if (!trTitle)
@@ -167,17 +166,17 @@ function getTmdbTitleFromHtml(tmdbId, mediaType) {
       let origTitle = trTitle;
       const origMatch = html.match(/<h3 class="caption" dir="auto">([^<]+)<\/h3>/i) || html.match(/<strong class="original_title">([^<]+)<\/strong>/i);
       if (origMatch) {
-        const cleaned = decodeHtml(origMatch[1]).replace("Orijinal Ba\u015Fl\u0131k", "").replace("Original Title", "").replace("Orijinal Ad\u0131", "").replace("Orijinal Adi", "").trim();
+        const cleaned = decodeHtml(origMatch[1]).replace("Orijinal Başlık", "").replace("Original Title", "").replace("Orijinal Adı", "").replace("Orijinal Adi", "").trim();
         if (cleaned.length > 0)
           origTitle = cleaned;
       }
       const shortTitle = trTitle.split(" ").slice(0, 2).join(" ");
       const yearMatch = html.match(/\((\d{4})\)/);
       const year = yearMatch ? parseInt(yearMatch[1]) : null;
-      console.log(`${PROVIDER_TAG2} [HTML] Ba\u015Fl\u0131k: ${trTitle} | Orijinal: ${origTitle} | Y\u0131l: ${year}`);
+      console.log(`${PROVIDER_TAG2} [HTML] Başlık: ${trTitle} | Orijinal: ${origTitle} | Yıl: ${year}`);
       return { trTitle, origTitle, shortTitle, year };
     } catch (e) {
-      console.warn(`${PROVIDER_TAG2} [HTML] Scraping ba\u015Far\u0131s\u0131z: ${e.message}`);
+      console.warn(`${PROVIDER_TAG2} [HTML] Scraping başarısız: ${e.message}`);
       return null;
     }
   });
@@ -199,10 +198,10 @@ function getTmdbTitleFromApi(tmdbId, mediaType) {
       const year = dateStr ? parseInt(dateStr.substring(0, 4)) : null;
       if (!trTitle)
         return null;
-      console.log(`${PROVIDER_TAG2} [API] Ba\u015Fl\u0131k: ${trTitle} | Orijinal: ${origTitle} | Y\u0131l: ${year}`);
+      console.log(`${PROVIDER_TAG2} [API] Başlık: ${trTitle} | Orijinal: ${origTitle} | Yıl: ${year}`);
       return { trTitle, origTitle, shortTitle, year };
     } catch (e) {
-      console.warn(`${PROVIDER_TAG2} [API] REST API ba\u015Far\u0131s\u0131z: ${e.message}`);
+      console.warn(`${PROVIDER_TAG2} [API] REST API başarısız: ${e.message}`);
       return null;
     }
   });
@@ -212,70 +211,80 @@ function getTmdbTitle(tmdbId, mediaType) {
     const htmlResult = yield getTmdbTitleFromHtml(tmdbId, mediaType);
     if (htmlResult)
       return htmlResult;
-    console.log(`${PROVIDER_TAG2} HTML scraping ba\u015Far\u0131s\u0131z, TMDB REST API deneniyor...`);
+    console.log(`${PROVIDER_TAG2} HTML scraping başarısız, TMDB REST API deneniyor...`);
     const apiResult = yield getTmdbTitleFromApi(tmdbId, mediaType);
     if (apiResult)
       return apiResult;
-    console.error(`${PROVIDER_TAG2} Her iki y\xF6ntem de ba\u015Far\u0131s\u0131z: TMDB ID=${tmdbId}`);
+    console.error(`${PROVIDER_TAG2} Her iki yöntem de başarısız: TMDB ID=${tmdbId}`);
     return { trTitle: "", origTitle: "", shortTitle: "", year: null };
   });
 }
 
-// src/patronDiziyou/extractor.js
+// src/patronDiziyou/extractor.js (PYTHON MANTIĞIYLA GÜNCELLENDİ)
 function resolveDiziyou(epUrl, baseUrl) {
   return __async(this, null, function* () {
     try {
-      console.log(`${PROVIDER_TAG} Kaynak aran\u0131yor: ${epUrl}`);
+      console.log(`${PROVIDER_TAG} Kaynak aranıyor: ${epUrl}`);
       const html = yield fetchText(epUrl, {
         headers: { "Referer": baseUrl }
       });
       if (!html) {
-        console.error(`${PROVIDER_TAG} Kaynak sayfas\u0131 \xE7ekilemedi.`);
+        console.error(`${PROVIDER_TAG} Kaynak sayfası çekilemedi.`);
         return [];
       }
-      const iframeMatch = html.match(/<iframe[^>]+id=["']diziyouPlayer["'][^>]+src=["']([^"']+)["']/i) || html.match(/<iframe[^>]+src=["']([^"']+)["'][^>]+id=["']diziyouPlayer["']/i);
-      if (!iframeMatch) {
-        console.error(`${PROVIDER_TAG} Player iframe bulunamad\u0131.`);
+      
+      // PYTHON MANTIĞI: player/12345.html üzerinden Regex ile Video ID bulma
+      const idMatch = html.match(/player\/(\d{4,8})\.html/i);
+      if (!idMatch) {
+        console.error(`${PROVIDER_TAG} Video ID (player/id.html) bulunamadı.`);
         return [];
       }
-      const iframeSrc = iframeMatch[1];
-      const parts = iframeSrc.split("/");
-      const lastPart = parts[parts.length - 1];
-      const itemId = lastPart.split(".html")[0];
-      if (!itemId) {
-        console.error(`${PROVIDER_TAG} Item ID \xE7\u0131kar\u0131lamad\u0131 (src: ${iframeSrc})`);
-        return [];
-      }
-      const storageBase = baseUrl.replace("www.", "storage.");
+      
+      const v_id = idMatch[1];
+      console.log(`${PROVIDER_TAG} Video ID çıkarıldı: ${v_id}`);
+
       let hasDub = false;
       let hasSub = false;
-      if (html.match(/id=["']turkceDublaj["']/i))
-        hasDub = true;
-      if (html.match(/id=["']turkceAltyazili["']/i))
-        hasSub = true;
+      if (html.match(/id=["']turkceDublaj["']/i)) hasDub = true;
+      if (html.match(/id=["']turkceAltyazili["']/i)) hasSub = true;
+      // Eğer sitede buton belirtilmemişse varsayılan olarak altyazılı deniyoruz
+      if (!hasDub && !hasSub) hasSub = true;
+
       const sources = [];
-      if (hasSub || !hasDub && !hasSub) {
-        sources.push({
-          url: `${storageBase}/episodes/${itemId}/play.m3u8`,
-          quality: "Auto",
-          language: "tr",
-          name: "Diziyou - Altyaz\u0131l\u0131",
-          headers: { "Referer": `${baseUrl}/` }
-        });
+      
+      // PYTHON MANTIĞI: Domain ve M3U8 kombinasyonları
+      const domains = ["storage.diziyou.one", "cast3.dystream.com", "cdn.diziyou.one"];
+      const filenames = ["play.m3u8", "720p.m3u8", "1080p.m3u8"];
+
+      for (const d of domains) {
+        for (const f of filenames) {
+          let qualityLabel = f === "play.m3u8" ? "Auto" : f.replace(".m3u8", "");
+          
+          if (hasSub) {
+            sources.push({
+              url: `https://${d}/episodes/${v_id}/${f}`,
+              quality: qualityLabel,
+              language: "tr",
+              name: `Diziyou Altyazılı (${d})`,
+              headers: { "Referer": `${baseUrl}/` }
+            });
+          }
+          if (hasDub) {
+            sources.push({
+              url: `https://${d}/episodes/${v_id}_tr/${f}`,
+              quality: qualityLabel,
+              language: "tr",
+              name: `Diziyou Dublaj (${d})`,
+              headers: { "Referer": `${baseUrl}/` }
+            });
+          }
+        }
       }
-      if (hasDub) {
-        sources.push({
-          url: `${storageBase}/episodes/${itemId}_tr/play.m3u8`,
-          quality: "Auto",
-          language: "tr",
-          name: "Diziyou - Dublaj",
-          headers: { "Referer": `${baseUrl}/` }
-        });
-      }
-      console.log(`${PROVIDER_TAG} ${sources.length} adet kaynak bulundu.`);
+
+      console.log(`${PROVIDER_TAG} Toplam ${sources.length} olası kaynak üretildi.`);
       return sources;
     } catch (e) {
-      console.error(`${PROVIDER_TAG} resolveDiziyou hatas\u0131: ${e.message}`);
+      console.error(`${PROVIDER_TAG} resolveDiziyou hatası: ${e.message}`);
       return [];
     }
   });
@@ -288,7 +297,7 @@ function getStreams(tmdbId, type, season, episode) {
       console.log(`${PROVIDER_TAG} getStreams: ${type} | TMDB: ${tmdbId} | S${season}E${episode}`);
       const tmdbData = yield getTmdbTitle(tmdbId, type);
       if (!tmdbData || !tmdbData.trTitle && !tmdbData.origTitle) {
-        console.error(`${PROVIDER_TAG} TMDB bilgileri al\u0131namad\u0131.`);
+        console.error(`${PROVIDER_TAG} TMDB bilgileri alınamadı.`);
         return [];
       }
       const { trTitle, origTitle, shortTitle, year } = tmdbData;
@@ -296,7 +305,7 @@ function getStreams(tmdbId, type, season, episode) {
       const queries = [...new Set([trTitle, origTitle, shortTitle].filter((q) => q && q.length > 1))];
       let matchUrl = null;
       for (const query of queries) {
-        console.log(`${PROVIDER_TAG} Aran\u0131yor: "${query}"`);
+        console.log(`${PROVIDER_TAG} Aranıyor: "${query}"`);
         const searchUrl = `${baseUrl}/wp-admin/admin-ajax.php`;
         const html = yield fetchText(searchUrl, {
           method: "POST",
@@ -321,7 +330,7 @@ function getStreams(tmdbId, type, season, episode) {
           const cleanQ = normalize(query);
           const titleMatches = rTitle === cleanTr || rTitle === cleanOrig || rTitle === cleanSh || rTitle === cleanQ || rTitle.includes(cleanQ) || cleanQ.includes(rTitle);
           if (titleMatches) {
-            console.log(`${PROVIDER_TAG} E\u015Fle\u015Fme: "${title}" -> ${href}`);
+            console.log(`${PROVIDER_TAG} Eşleşme: "${title}" -> ${href}`);
             matchUrl = fixUrl(href, baseUrl);
             break;
           }
@@ -330,22 +339,22 @@ function getStreams(tmdbId, type, season, episode) {
           break;
       }
       if (!matchUrl) {
-        console.log(`${PROVIDER_TAG} \u0130\xE7erik bulunamad\u0131.`);
+        console.log(`${PROVIDER_TAG} İçerik bulunamadı.`);
         return [];
       }
       let targetUrl = matchUrl;
       if (type === "tv") {
-        console.log(`${PROVIDER_TAG} Dizi sayfas\u0131 inceleniyor: ${matchUrl}`);
+        console.log(`${PROVIDER_TAG} Dizi sayfası inceleniyor: ${matchUrl}`);
         const seriesHtml = yield fetchText(matchUrl);
         const epPattern = new RegExp(`href=["']([^"']+-${season}-sezon-${episode}-bolum\\/?)[^"']*["']`, "i");
         const epMatch = seriesHtml.match(epPattern);
         if (epMatch) {
           targetUrl = fixUrl(epMatch[1], baseUrl);
-          console.log(`${PROVIDER_TAG} B\xF6l\xFCm URL (Regex): ${targetUrl}`);
+          console.log(`${PROVIDER_TAG} Bölüm URL (Regex): ${targetUrl}`);
         } else {
           let slug = matchUrl.replace(/\/$/, "").split("/").pop();
           targetUrl = `${baseUrl}/${slug}-${season}-sezon-${episode}-bolum/`;
-          console.log(`${PROVIDER_TAG} B\xF6l\xFCm URL (Tahmin): ${targetUrl}`);
+          console.log(`${PROVIDER_TAG} Bölüm URL (Tahmin): ${targetUrl}`);
         }
       }
       const sources = yield resolveDiziyou(targetUrl, baseUrl);
