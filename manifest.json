@@ -235,4 +235,129 @@
       "id": "patron-dizipal",
       "name": "patronDizipal",
       "description": "Dizipal tabanli film ve dizi saglayicisi. @patr0n tarafindan gelistirildi.",
-      "version": "4.0.0
+      "version": "4.0.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/patronDizipal.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=dizipal2063.com&sz=64",
+      "contentLanguage": [
+        "tr"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4",
+        "mkv"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "patron-dizify",
+      "name": "patronDizify",
+      "description": "Dizify.org tabanli film ve dizi saglayicisi. @patr0n tarafindan gelistirildi.",
+      "version": "1.1.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/patronDizify.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=dizify.org&sz=64",
+      "contentLanguage": [
+        "tr"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4",
+        "mkv"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "patron-film-ekseni",
+      "name": "patronFilmEkseni",
+      "description": "FilmEkseni.cc tabanli film saglayicisi. @patr0n tarafindan gelistirildi.",
+      "version": "2.0.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie"
+      ],
+      "filename": "providers/patronFilmEkseni.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=filmekseni.cc&sz=64",
+      "contentLanguage": [
+        "tr"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4",
+        "mkv",
+        "hls"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "patron-diziyou",
+      "name": "patronDiziyou",
+      "description": "Diziyou tabanli dizi saglayicisi. @patr0n tarafindan gelistirildi.",
+      "version": "1.0.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/patronDiziyou.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=diziyou.one&sz=64",
+      "contentLanguage": [
+        "tr"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4",
+        "mkv",
+        "hls"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "patron-sinemacx",
+      "name": "Sinemacx",
+      "description": "Sinema.gg kaynaklı filmler,@patr0n tarafindan gelistirildi.",
+      "version": "1.0.0",
+      "author": "patr0n",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/patronSinemacx.js",
+      "enabled": true,
+      "logo": "https://www.sinema.gg/wp-content/themes/sinemacx/favicon.ico",
+      "contentLanguage": [
+        "tr",
+        "en"
+      ],
+      "formats": [
+        "m3u8",
+        "mp4",
+        "mkv",
+        "hls"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "supportsExternalPlayer": true
+    }
+  ]
+}
