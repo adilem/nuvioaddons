@@ -1,41 +1,42 @@
 {
-  "id": "patron-sinewix-test",
-  "name": "patr0n Sinewix Test",
-  "version": "1.0.0",
-  "types": [
-    "movie",
-    "tv",
-    "series"
-  ],
+  "id": "patron-sinewix-pro",
+  "name": "patr0n SineWix Pro",
+  "version": "2.0.0",
+  "description": "SineWix API tabanli tam icerikli film, dizi ve anime eklentisi. @patr0n tarafindan gelistirildi.",
+  "logo": "https://ydfvfdizipanel.ru/favicon.ico",
   "resources": [
+    "catalog",
+    "meta",
     "stream"
   ],
-  "scrapers": [
+  "types": [
+    "movie",
+    "series",
+    "tv"
+  ],
+  "idPrefixes": [
+    "sinewix",
+    "tt"
+  ],
+  "catalogs": [
     {
-      "id": "patron-sinewix",
-      "name": "patronSineWix",
-      "description": "SineWix tabanli film ve dizi saglayicisi. @patr0n tarafindan gelistirildi.",
-      "version": "1.1.0",
-      "author": "patr0n",
-      "supportedTypes": [
-        "movie",
-        "tv"
-      ],
-      "filename": "providers/patronSinewix.js",
-      "enabled": true,
-      "logo": "https://ydfvfdizipanel.ru/favicon.ico",
-      "contentLanguage": [
-        "tr"
-      ],
-      "formats": [
-        "m3u8",
-        "mp4",
-        "mkv",
-        "hls"
-      ],
-      "limited": false,
-      "disabledPlatforms": [],
-      "supportsExternalPlayer": true
+      "id": "sw-latest-movies",
+      "type": "movie",
+      "name": "SineWix — Son Filmler"
+    },
+    {
+      "id": "sw-latest-series",
+      "type": "series",
+      "name": "SineWix — Son Diziler"
+    },
+    {
+      "id": "sw-latest-animes",
+      "type": "series",
+      "name": "SineWix — Son Animeler"
     }
-  ]
+  ],
+  "behaviorHints": {
+    "adult": false,
+    "p2p": false
+  }
 }
