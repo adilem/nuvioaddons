@@ -1,6 +1,6 @@
 {
-  "id": "patron-diziyou-test",
-  "name": "patr0n Diziyou Test",
+  "id": "patron-sinewix-test",
+  "name": "patr0n Sinewix Test",
   "version": "1.0.0",
   "types": [
     "movie",
@@ -12,18 +12,18 @@
   ],
   "scrapers": [
     {
-      "id": "patron-diziyou",
-      "name": "patronDiziyou",
-      "description": "Diziyou tabanli dizi saglayicisi. @patr0n tarafindan gelistirildi.",
-      "version": "1.0.0",
+      "id": "patron-sinewix",
+      "name": "patronSineWix",
+      "description": "SineWix tabanli film ve dizi saglayicisi. @patr0n tarafindan gelistirildi.",
+      "version": "1.1.0",
       "author": "patr0n",
       "supportedTypes": [
         "movie",
         "tv"
       ],
-      "filename": "providers/patronDiziyou.js",
+      "filename": "providers/patronSinewix.js",
       "enabled": true,
-      "logo": "https://www.google.com/s2/favicons?domain=diziyou.one&sz=64",
+      "logo": "https://ydfvfdizipanel.ru/favicon.ico",
       "contentLanguage": [
         "tr"
       ],
