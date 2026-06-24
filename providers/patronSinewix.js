@@ -1,6 +1,6 @@
 /**
- * patronSinewix - Built from src/patronSinewix/
- * Updated with Live Mobile Signature & Advanced Extractor
+ * patronSinewix - Full Catalog & Stream Provider
+ * Generated & Enhanced: 2026-06-24
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -42,10 +42,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-var __publicField = (obj, key, value) => {
-  __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-  return value;
-};
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => { try { step(generator.next(value)); } catch (e) { reject(e); } };
@@ -59,13 +55,16 @@ var patronSinewix_exports = {};
 __export(patronSinewix_exports, {
   getMainPage: () => getMainPage,
   getStreams: () => getStreams,
-  search: () => search
+  search: () => search,
+  catalogHandler: () => catalogHandler,
+  metaHandler: () => metaHandler
 });
 module.exports = __toCommonJS(patronSinewix_exports);
 
-// HTTP TOOLKIT'TEN ALINAN EN GÜNCEL VE CANLI GÜVENLİK PARAMETRELERİ
 var BASE_URL = "https://ydfvfdizipanel.ru";
 var API_TOKEN = "9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA"; 
+
+// HTTP TOOLKIT'TEN ALINAN EN GÜNCEL VE CANLI GÜVENLİK PARAMETRELERİ
 var HEADERS = {
   "User-Agent": "EasyPlex (Android 9; SM-S9160; samsung star2qltechn; en)",
   "Accept": "application/json",
@@ -76,11 +75,13 @@ var HEADERS = {
 
 function fetchJSON(url) {
   return __async(this, null, function* () {
-    const response = yield fetch(url, { headers: HEADERS });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} -> ${url}`);
+    try {
+      const response = yield fetch(url, { headers: HEADERS });
+      if (!response.ok) return null;
+      return yield response.json();
+    } catch (e) {
+      return null;
     }
-    return yield response.json();
   });
 }
 
@@ -112,42 +113,28 @@ function universalExtractor(embedUrl) {
   });
 }
 
-// src/patronSinewix/tmdb.js
-var import_cheerio_without_node_native = __toESM(require("cheerio-without-node-native"));
-var TMDB_SCRAPE_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-  "Accept-Language": "tr-TR,tr;q=0.9"
-};
-function decodeHtml(text) {
-  return (text || "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#039;/g, "'");
-}
+// TMDB ID ALTYAPISI
 function getTmdbTitle(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
       const type = mediaType === "movie" ? "movie" : "tv";
       const apiKey = "500330721680edb6d5f7f12ba7cd9023";
       const apiUrl = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${apiKey}&language=tr-TR`;
-      const apiRes = yield fetch(apiUrl);
-      if (apiRes.ok) {
-        const data = yield apiRes.json();
+      const data = yield fetchJSON(apiUrl);
+      if (data) {
         return {
           trTitle: data.title || data.name || "",
           origTitle: data.original_title || data.original_name || "",
-          shortTitle: (data.title || data.name || "").split(":")[0].trim(),
-          year: (data.release_date || data.first_air_date || "").substring(0, 4)
+          shortTitle: (data.title || data.name || "").split(":")[0].trim()
         };
       }
-      return { trTitle: "", origTitle: "", shortTitle: "", year: "" };
-    } catch (error) {
-      return { trTitle: "", origTitle: "", shortTitle: "", year: "" };
+      return null;
+    } catch (e) {
+      return null;
     }
   });
 }
 
-var PROVIDER_NAME = "SineWix";
-function normalizeTitle(value) {
-  return (value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
 function searchContent(query) {
   return __async(this, null, function* () {
     const url = `${BASE_URL}/public/api/search/${encodeURIComponent(query)}/${API_TOKEN}`;
@@ -156,45 +143,90 @@ function searchContent(query) {
   });
 }
 
-function extractStreams(tmdbId, mediaType, season, episode) {
+// KATALOG YÖNETİCİSİ (NUVIO ANA EKRANI İÇİN)
+function catalogHandler(catalogId, type, page = 1) {
+  return __async(this, null, function* () {
+    let endpoint = "movies/latest";
+    if (catalogId === "sw-latest-series") endpoint = "series/latest";
+    if (catalogId === "sw-latest-animes") endpoint = "animes/latest";
+
+    const url = `${BASE_URL}/public/api/${endpoint}/${API_TOKEN}`;
+    const data = yield fetchJSON(url);
+    const items = data ? (data.movies || data.series || data.animes || []) : [];
+
+    return items.map(item => ({
+      id: `sinewix:${item.id}:${type}`,
+      title: item.name || item.title,
+      type: type,
+      poster: item.poster_path,
+      description: item.overview || ""
+    }));
+  });
+}
+
+// META DETAY YÖNETİCİSİ
+function metaHandler(id) {
+  return __async(this, null, function* () {
+    const parts = id.split(":");
+    const sinewixId = parts[1];
+    const type = parts[2] === "movie" ? "media" : "series";
+    const method = parts[2] === "movie" ? "detail" : "show";
+
+    const url = `${BASE_URL}/public/api/${type}/${method}/${sinewixId}/${API_TOKEN}`;
+    const data = yield fetchJSON(url);
+    if (!data) return null;
+
+    return {
+      id: id,
+      title: data.name || data.title,
+      type: parts[2],
+      poster: data.poster_path,
+      background: data.backdrop_path,
+      description: data.overview || ""
+    };
+  });
+}
+
+// EN GELİŞMİŞ STREAM (OYNATMA LİNKİ) MOTORU
+function getStreams(id, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
-      const { trTitle, origTitle, shortTitle } = yield getTmdbTitle(tmdbId, mediaType);
-      if (!trTitle && !origTitle) return [];
-      
-      let results = yield searchContent(trTitle);
-      if (!results.length && origTitle && origTitle !== trTitle) results = yield searchContent(origTitle);
-      if (!results.length && shortTitle) results = yield searchContent(shortTitle);
-      
-      const q = normalizeTitle(trTitle || origTitle);
-      const qOrig = normalizeTitle(origTitle);
-      
-      let match = results.find((item) => {
-        const itemTitle = normalizeTitle(item.name || item.title);
-        const itemOrig = normalizeTitle(item.original_name);
-        const typeMatch = mediaType === "movie" ? item.type === "movie" : item.type === "serie";
-        return typeMatch && (itemTitle === q || itemTitle === qOrig || itemOrig === q || itemOrig === qOrig);
-      });
-      
-      if (!match) return [];
+      let sinewixId = null;
+      let type = mediaType === "movie" ? "movie" : "tv";
 
-      const id = match.id;
-      const isMovie = mediaType === "movie";
-      const typePath = isMovie ? "media" : "series";
-      const method = isMovie ? "detail" : "show";
-      const detailUrl = `${BASE_URL}/public/api/${typePath}/${method}/${id}/${API_TOKEN}`;
-      const detailData = yield fetchJSON(detailUrl);
+      // 1. Eğer Nuvio Kataloğundan tıklandıysa id "sinewix:43506:movie" formatındadır
+      if (id.startsWith("sinewix:")) {
+        const parts = id.split(":");
+        sinewixId = parts[1];
+      } else if (id.startsWith("tt")) {
+        // 2. Eğer Cinemeta (IMDB) üzerinden tıklandıysa akıllı arama yapıp eşleştiriyoruz
+        const tmdbData = yield getTmdbTitle(id, mediaType);
+        if (tmdbData) {
+          const results = yield searchContent(tmdbData.trTitle || tmdbData.origTitle);
+          const match = results.find(item => item.type === (mediaType === "movie" ? "movie" : "serie"));
+          if (match) sinewixId = match.id;
+        }
+      }
+
+      if (!sinewixId) return [];
+
+      const typePath = mediaType === "movie" ? "media" : "series";
+      const method = mediaType === "movie" ? "detail" : "show";
+      const detailUrl = `${BASE_URL}/public/api/${typePath}/${method}/${sinewixId}/${API_TOKEN}`;
       
+      const detailData = yield fetchJSON(detailUrl);
+      if (!detailData) return [];
+
       const streams = [];
       let rawVideos = [];
 
-      if (isMovie) {
+      if (mediaType === "movie") {
         rawVideos = detailData.videos || [];
       } else {
         const seasons = detailData.seasons || [];
-        const targetSeason = seasons.find((s) => s.season_number == season);
+        const targetSeason = seasons.find(s => s.season_number == season);
         if (targetSeason && targetSeason.episodes) {
-          const targetEpisode = targetSeason.episodes.find((e) => e.episode_number == episode);
+          const targetEpisode = targetSeason.episodes.find(e => e.episode_number == episode);
           if (targetEpisode) rawVideos = targetEpisode.videos || [];
         }
       }
@@ -205,10 +237,10 @@ function extractStreams(tmdbId, mediaType, season, episode) {
 
         if (/\.(m3u8|mp4|mkv)/i.test(embedUrl)) {
           streams.push({
-            name: PROVIDER_NAME,
-            title: `${v.server || "Server"} - ${v.lang === "tr" ? "Türkçe" : "Altyazılı"}`,
+            name: `SineWix [${v.server || "Direct"}]`,
+            title: `${v.lang === "tr" ? "Türkçe Dublaj" : "Türkçe Altyazılı"} - Doğrudan Link`,
             url: embedUrl,
-            quality: "Auto",
+            quality: "1080p",
             headers: HEADERS
           });
           continue;
@@ -217,14 +249,15 @@ function extractStreams(tmdbId, mediaType, season, episode) {
         const extracted = yield universalExtractor(embedUrl);
         if (extracted && extracted.url) {
           streams.push({
-            name: PROVIDER_NAME,
-            title: `${v.server || "Premium"} - ${v.lang === "tr" ? "Türkçe Dublaj" : "Altyazılı"}`,
+            name: `SineWix [${v.server || "Premium"}]`,
+            title: `${v.lang === "tr" ? "Türkçe Dublaj" : "Türkçe Altyazılı"} (${extracted.format.toUpperCase()})`,
             url: extracted.url,
             quality: "Auto",
             headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": embedUrl }
           });
         }
       }
+
       return streams;
     } catch (error) {
       return [];
@@ -232,23 +265,14 @@ function extractStreams(tmdbId, mediaType, season, episode) {
   });
 }
 
-function getStreams(tmdbId, mediaType, season, episode) {
-  return __async(this, null, function* () {
-    try {
-      return yield extractStreams(tmdbId, mediaType, season, episode);
-    } catch (error) {
-      return [];
-    }
-  });
-}
 function search(query) {
   return __async(this, null, function* () {
     try {
       const results = yield searchContent(query);
       return results.map((item) => ({
-        id: item.id.toString(),
+        id: `sinewix:${item.id}:${item.type === "serie" ? "series" : "movie"}`,
         title: item.name || item.title,
-        type: item.type === "serie" ? "tv" : "movie",
+        type: item.type === "serie" ? "series" : "movie",
         poster: item.poster_path,
         year: item.release_date ? item.release_date.split("-")[0] : ""
       }));
@@ -257,33 +281,9 @@ function search(query) {
     }
   });
 }
+
 function getMainPage() {
   return __async(this, null, function* () {
-    try {
-      const categories = [
-        { name: "Popüler Filmler", url: `${BASE_URL}/public/api/movies/popular/${API_TOKEN}` },
-        { name: "Yeni Filmler", url: `${BASE_URL}/public/api/movies/latest/${API_TOKEN}` },
-        { name: "Popüler Diziler", url: `${BASE_URL}/public/api/series/popular/${API_TOKEN}` },
-        { name: "Yeni Diziler", url: `${BASE_URL}/public/api/series/latest/${API_TOKEN}` }
-      ];
-      const pages = yield Promise.all(categories.map((cat) => __async(this, null, function* () {
-        try {
-          const data = yield fetchJSON(cat.url);
-          const items = (data.movies || data.series || []).map((item) => ({
-            id: item.id.toString(),
-            title: item.name || item.title,
-            type: item.type === "serie" ? "tv" : "movie",
-            poster: item.poster_path,
-            year: item.release_date ? item.release_date.split("-")[0] : ""
-          }));
-          return { name: cat.name, items };
-        } catch (e) {
-          return { name: cat.name, items: [] };
-        }
-      })));
-      return pages;
-    } catch (error) {
-      return [];
-    }
+    return [];
   });
 }
