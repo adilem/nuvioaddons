@@ -1,6 +1,6 @@
 /**
- * patronSinewix - Full Catalog & Stream Provider
- * Generated & Enhanced: 2026-06-24
+ * patronSinewix - Proxy Powered Anti-Block Version
+ * Generated: 2026-06-24
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -64,7 +64,9 @@ module.exports = __toCommonJS(patronSinewix_exports);
 var BASE_URL = "https://ydfvfdizipanel.ru";
 var API_TOKEN = "9iQNC5HQwPlaFuJDkhncJ5XTJ8feGXOJatAA"; 
 
-// HTTP TOOLKIT'TEN ALINAN EN GÜNCEL VE CANLI GÜVENLİK PARAMETRELERİ
+// Engel aşma proxy havuzu (Eğer biri çalışmazsa diğeri devreye girer)
+var PROXY_URL = "https://api.allorigins.win/raw?url=";
+
 var HEADERS = {
   "User-Agent": "EasyPlex (Android 9; SM-S9160; samsung star2qltechn; en)",
   "Accept": "application/json",
@@ -76,7 +78,9 @@ var HEADERS = {
 function fetchJSON(url) {
   return __async(this, null, function* () {
     try {
-      const response = yield fetch(url, { headers: HEADERS });
+      // İstekleri korumayı aşmak için proxy tünelinden geçiriyoruz
+      const proxiedUrl = `${PROXY_URL}${encodeURIComponent(url)}`;
+      const response = yield fetch(proxiedUrl, { headers: HEADERS });
       if (!response.ok) return null;
       return yield response.json();
     } catch (e) {
@@ -85,12 +89,12 @@ function fetchJSON(url) {
   });
 }
 
-// ARKA PLANDA IFRAME PLAYER LINKLERINI (.MP4/.M3U8) FORMUNA ÇEVİREN PARSER
 function universalExtractor(embedUrl) {
   return __async(this, null, function* () {
     try {
       const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-      const res = yield fetch(embedUrl, { headers: { "User-Agent": ua } });
+      const proxiedEmbed = `${PROXY_URL}${encodeURIComponent(embedUrl)}`;
+      const res = yield fetch(proxiedEmbed, { headers: { "User-Agent": ua } });
       if (!res.ok) return null;
       const html = yield res.text();
 
@@ -113,15 +117,15 @@ function universalExtractor(embedUrl) {
   });
 }
 
-// TMDB ID ALTYAPISI
 function getTmdbTitle(tmdbId, mediaType) {
   return __async(this, null, function* () {
     try {
       const type = mediaType === "movie" ? "movie" : "tv";
       const apiKey = "500330721680edb6d5f7f12ba7cd9023";
       const apiUrl = `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${apiKey}&language=tr-TR`;
-      const data = yield fetchJSON(apiUrl);
-      if (data) {
+      const response = yield fetch(apiUrl);
+      if (response.ok) {
+        const data = yield response.json();
         return {
           trTitle: data.title || data.name || "",
           origTitle: data.original_title || data.original_name || "",
@@ -139,11 +143,10 @@ function searchContent(query) {
   return __async(this, null, function* () {
     const url = `${BASE_URL}/public/api/search/${encodeURIComponent(query)}/${API_TOKEN}`;
     const data = yield fetchJSON(url);
-    return data.search || [];
+    return data && data.search ? data.search : [];
   });
 }
 
-// KATALOG YÖNETİCİSİ (NUVIO ANA EKRANI İÇİN)
 function catalogHandler(catalogId, type, page = 1) {
   return __async(this, null, function* () {
     let endpoint = "movies/latest";
@@ -164,7 +167,6 @@ function catalogHandler(catalogId, type, page = 1) {
   });
 }
 
-// META DETAY YÖNETİCİSİ
 function metaHandler(id) {
   return __async(this, null, function* () {
     const parts = id.split(":");
@@ -187,19 +189,15 @@ function metaHandler(id) {
   });
 }
 
-// EN GELİŞMİŞ STREAM (OYNATMA LİNKİ) MOTORU
 function getStreams(id, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
       let sinewixId = null;
-      let type = mediaType === "movie" ? "movie" : "tv";
 
-      // 1. Eğer Nuvio Kataloğundan tıklandıysa id "sinewix:43506:movie" formatındadır
       if (id.startsWith("sinewix:")) {
         const parts = id.split(":");
         sinewixId = parts[1];
       } else if (id.startsWith("tt")) {
-        // 2. Eğer Cinemeta (IMDB) üzerinden tıklandıysa akıllı arama yapıp eşleştiriyoruz
         const tmdbData = yield getTmdbTitle(id, mediaType);
         if (tmdbData) {
           const results = yield searchContent(tmdbData.trTitle || tmdbData.origTitle);
